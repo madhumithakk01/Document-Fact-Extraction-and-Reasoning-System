@@ -233,16 +233,9 @@ class OntologyOut(BaseModel):
     groups: list[OntologyGroup]
 
 
-# --- evaluation ---
-class EvaluationOut(BaseModel):
-    grounding_checks: int
-    grounding_pass_rate: float
-    independent_verify_breakdown: dict[str, int]
-    facts_by_status: dict[str, int]
-    auto_correction_rate: float
-    needs_review_rate: float
+# evaluation report lives in app/evaluation/schema.py
 
 
-# --- query (reasoning console; implemented in a later phase) ---
+# --- query (reasoning console) ---
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
