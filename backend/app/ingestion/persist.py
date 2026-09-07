@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ingestion.types import IngestionResult
@@ -60,9 +60,8 @@ async def persist_ingestion(
         document.page_count = profile.page_count
         document.ocr_page_count = profile.ocr_pages
         document.routing_profile = routing_profile
-        for chunk in list(document.chunks):
-            await session.delete(chunk)
-        await session.flush()
+        document.uploaded_at = document.uploaded_at or datetime.now(UTC)
+        await session.execute(delete(Chunk).where(Chunk.document_id == document.document_id))
 
     await session.flush()
 
