@@ -51,6 +51,8 @@ function ProjectWorkspace({ projectId, tab }: { projectId: string; tab: string }
           <span className="text-meta text-text-muted">
             {summary.data.document_count} docs · {summary.data.fact_count} facts ·{" "}
             {summary.data.relationship_count} relationships
+            {summary.data.sub_cluster_count > 1 &&
+              ` · ${summary.data.sub_cluster_count} sub-clusters`}
           </span>
         )}
       </header>
