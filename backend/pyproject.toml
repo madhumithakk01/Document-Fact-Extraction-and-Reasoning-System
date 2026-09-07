@@ -49,6 +49,10 @@ known-first-party = ["app"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = [
+    "slow: end-to-end runs against the real source PDFs; run with -m slow",
+]
 
 [tool.mypy]
 python_version = "3.11"
