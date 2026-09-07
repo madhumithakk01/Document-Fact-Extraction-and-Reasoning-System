@@ -164,13 +164,41 @@ export interface Ontology {
   groups: OntologyGroup[];
 }
 
+export interface DocumentEvaluation {
+  document_id: string;
+  filename: string;
+  processed_at: string | null;
+  facts_total: number;
+  facts_by_status: Record<string, number>;
+  grounding_checks: number;
+  grounding_pass: number;
+  grounding_pass_rate: number;
+}
+
+export interface TimelinePoint {
+  index: number;
+  document_id: string;
+  filename: string;
+  cumulative_facts: number;
+  grounding_pass_rate: number;
+  verified_rate: number;
+  needs_review_rate: number;
+}
+
 export interface Evaluation {
   grounding_checks: number;
+  grounding_pass: number;
   grounding_pass_rate: number;
+  independent_verify_calls: number;
   independent_verify_breakdown: Record<string, number>;
+  facts_total: number;
   facts_by_status: Record<string, number>;
+  verified_rate: number;
   auto_correction_rate: number;
   needs_review_rate: number;
+  rejected_rate: number;
+  per_document: DocumentEvaluation[];
+  timeline: TimelinePoint[];
 }
 
 export interface QueryCitation {
