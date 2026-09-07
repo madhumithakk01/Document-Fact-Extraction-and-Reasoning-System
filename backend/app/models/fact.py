@@ -1,20 +1,22 @@
 """Fact table.
 
 Raw candidate facts land here unverified (``verification_status = 'pending'``).
-The verification loop updates the status and fills ``verifier_confidence``;
-normalization adds the embedding column and its index in a later phase. Every
-row carries ``project_id`` for the hard project partition.
+The verification loop updates the status and fills ``verifier_confidence``.
+``embedding`` is populated by normalization for candidate search. Every row
+carries ``project_id`` for the hard project partition.
 """
 
 from __future__ import annotations
 
 import uuid
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
+from app.models.constants import EMBEDDING_DIM
 
 
 class Fact(Base, TimestampMixin):
@@ -24,12 +26,18 @@ class Fact(Base, TimestampMixin):
         Index("ix_facts_document_id", "document_id"),
         Index("ix_facts_chunk_id", "chunk_id"),
         Index("ix_facts_verification_status", "verification_status"),
+        Index("ix_facts_entity", "project_id", "entity"),
+        Index("ix_facts_qualifiers", "qualifiers", postgresql_using="gin"),
+        Index("ix_facts_value", "value", postgresql_using="gin"),
+        Index("ix_facts_period", "period", postgresql_using="gin"),
     )
 
     fact_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("projects.project_id", ondelete="CASCADE"), nullable=False
+    )
     document_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("documents.document_id", ondelete="CASCADE"), nullable=False
     )
@@ -51,6 +59,7 @@ class Fact(Base, TimestampMixin):
     qualifiers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     evidence_text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
 
     verification_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     extraction_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
