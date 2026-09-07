@@ -53,6 +53,11 @@ class Document(Base, TimestampMixin):
 
     doc_embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
 
+    # domain profiling: which sub-cluster this document was placed in, and whether
+    # it looked topically different from everything already in the project
+    sub_cluster_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    off_domain: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     chunks: Mapped[list[Chunk]] = relationship(
