@@ -1,23 +1,17 @@
-"""Reasoning-console endpoint.
-
-The bounded query agent is built in a later phase; the route exists so the API
-surface is complete and returns a clear 501 until then.
-"""
+"""Reasoning-console endpoint: an open question -> a cited, disagreement-aware answer."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
 from app.api.deps import project_scope
 from app.api.schemas import QueryRequest
+from app.query import QueryResult, run_query
 from app.repository.scope import ProjectScope
 
 router = APIRouter(prefix="/projects/{project_id}/query", tags=["query"])
 
 
-@router.post("", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def ask(body: QueryRequest, scope: ProjectScope = Depends(project_scope)) -> dict:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="the reasoning console is not enabled yet",
-    )
+@router.post("", response_model=QueryResult)
+async def ask(body: QueryRequest, scope: ProjectScope = Depends(project_scope)) -> QueryResult:
+    return await run_query(scope.session, scope.project_id, body.question.strip())
