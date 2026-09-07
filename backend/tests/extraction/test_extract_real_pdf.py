@@ -6,8 +6,6 @@ answering locally. Otherwise skipped, like the ingestion real-PDF suite.
 
 from __future__ import annotations
 
-import os
-import urllib.request
 from pathlib import Path
 
 import pytest
@@ -16,25 +14,15 @@ from app.extraction import extract_document
 from app.extraction.schema import FactKind
 from app.ingestion import ingest_pdf
 from app.providers.factory import get_llm_provider
+from tests._env import provider_available
 
 _DATASETS = Path(__file__).resolve().parents[3] / "datasets"
 _DECK = _DATASETS / "delhivery" / "03-delhivery-q4-fy24-earnings-presentation.pdf"
 
-
-def _provider_available() -> bool:
-    if os.getenv("GROQ_API_KEY"):
-        return True
-    try:
-        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=1)
-        return True
-    except Exception:
-        return False
-
-
 pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(not _DECK.is_file(), reason="datasets/ not available"),
-    pytest.mark.skipif(not _provider_available(), reason="no LLM provider reachable"),
+    pytest.mark.skipif(not provider_available(), reason="no LLM provider reachable"),
 ]
 
 

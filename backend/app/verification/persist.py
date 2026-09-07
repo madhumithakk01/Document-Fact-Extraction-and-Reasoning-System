@@ -1,8 +1,8 @@
 """Apply verification outcomes to stored facts and write the log.
 
-``fact_rows`` must be the rows returned by ``persist_facts`` for this document,
-in the same order as ``result.verifications`` -- both derive from the extraction
-run's fact list.
+``fact_ids`` must be in the same order as ``result.verifications`` -- both come
+from the extraction run's fact list, and ``persist_facts`` returns its rows in
+that order.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.fact import Fact
@@ -20,16 +21,30 @@ from app.verification.schema import VerificationResult
 async def persist_verification(
     session: AsyncSession,
     project_id: uuid.UUID,
-    fact_rows: Sequence[Fact],
+    fact_ids: Sequence[uuid.UUID],
     result: VerificationResult,
 ) -> None:
-    if len(fact_rows) != len(result.verifications):
+    if len(fact_ids) != len(result.verifications):
         raise ValueError(
-            f"fact_rows ({len(fact_rows)}) and verifications "
+            f"fact_ids ({len(fact_ids)}) and verifications "
             f"({len(result.verifications)}) are not aligned"
         )
 
-    for row, fv in zip(fact_rows, result.verifications, strict=True):
+    rows = {
+        r.fact_id: r
+        for r in (
+            await session.execute(
+                select(Fact).where(Fact.project_id == project_id, Fact.fact_id.in_(list(fact_ids)))
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    for fact_id, fv in zip(fact_ids, result.verifications, strict=True):
+        row = rows.get(fact_id)
+        if row is None:
+            continue
         row.verification_status = fv.final_status.value
         row.verifier_confidence = fv.verifier_confidence
         if fv.notes:
