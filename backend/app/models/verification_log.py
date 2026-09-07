@@ -26,7 +26,9 @@ class VerificationLog(Base, TimestampMixin):
     log_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("projects.project_id", ondelete="CASCADE"), nullable=False
+    )
     fact_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("facts.fact_id", ondelete="CASCADE"), nullable=False
     )
