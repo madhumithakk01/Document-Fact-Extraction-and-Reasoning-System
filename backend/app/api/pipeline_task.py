@@ -56,7 +56,9 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
             data = stored_pdf_path(doc.content_hash).read_bytes()
             filename = doc.filename
 
-        ingestion = ingest_pdf(data, filename, render_images=True)
+        # page images are rendered lazily by the evidence endpoint, so a large
+        # document is not held up rasterising 100 pages nobody may look at
+        ingestion = ingest_pdf(data, filename, render_images=False)
 
         async with SessionFactory() as session:
             stored = await persist_ingestion(

@@ -74,8 +74,15 @@ def test_upload_process_and_read_everything_over_http(client, tiny_pdf) -> None:
     assert evaluation["grounding_pass_rate"] >= 0.0
     assert sum(evaluation["facts_by_status"].values()) == len(facts)
 
-    # query endpoint is a declared-but-not-yet 501
-    assert client.post(f"/projects/{pid}/query", json={"question": "?"}).status_code == 501
+    # reasoning console answers from this project's facts
+    q = client.post(
+        f"/projects/{pid}/query",
+        json={"question": "What was FY24 EBITDA?"},
+    )
+    assert q.status_code == 200
+    body = q.json()
+    assert "answer" in body and isinstance(body["citations"], list)
+    assert isinstance(body["trace"], list)
 
     # delete removes the document and cascades its facts/relationships
     assert client.delete(f"/projects/{pid}/documents/{did}").status_code == 204

@@ -44,8 +44,12 @@ class Settings(BaseSettings):
     frontier_base_url: str = "https://api.openai.com/v1"
 
     llm_temperature: float = 0.0
-    llm_max_tokens: int = 4096
-    llm_timeout_seconds: float = 60.0
+    llm_max_tokens: int = 6000
+    llm_timeout_seconds: float = 90.0
+    # keep within a free tokens-per-minute budget: at most this many in-flight
+    # provider requests, spaced at least this many seconds apart
+    llm_max_concurrency: int = 1
+    llm_min_request_interval: float = 2.0
 
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_device: str = "cpu"

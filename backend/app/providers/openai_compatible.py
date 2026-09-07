@@ -23,7 +23,7 @@ from app.providers.base import (
 logger = logging.getLogger(__name__)
 
 _RETRY_AFTER_IN_BODY = re.compile(r"try again in ([\d.]+)s", re.I)
-_MAX_BACKOFF_SECONDS = 30.0
+_MAX_BACKOFF_SECONDS = 60.0
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -38,7 +38,9 @@ class OpenAICompatibleProvider(LLMProvider):
         default_max_tokens: int,
         timeout_seconds: float,
         require_key: bool = True,
-        max_retries: int = 3,
+        max_retries: int = 6,
+        max_concurrency: int = 1,
+        min_request_interval: float = 0.0,
     ) -> None:
         if require_key and not api_key:
             raise ProviderError(f"{name} provider selected but no API key configured")
@@ -47,6 +49,12 @@ class OpenAICompatibleProvider(LLMProvider):
         self._default_temperature = default_temperature
         self._default_max_tokens = default_max_tokens
         self._max_retries = max_retries
+        # keep within a free-tier tokens-per-minute budget: cap in-flight
+        # requests and space them out so a burst of parallel calls does not
+        # instantly blow the limit
+        self._semaphore = asyncio.Semaphore(max(1, max_concurrency))
+        self._min_interval = max(0.0, min_request_interval)
+        self._last_request_at = 0.0
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
@@ -92,7 +100,21 @@ class OpenAICompatibleProvider(LLMProvider):
             return min(float(match.group(1)) + 0.5, _MAX_BACKOFF_SECONDS)
         return min(2.0**attempt, _MAX_BACKOFF_SECONDS)
 
+    async def _pace(self) -> None:
+        if self._min_interval <= 0:
+            return
+        now = asyncio.get_event_loop().time()
+        wait = self._last_request_at + self._min_interval - now
+        if wait > 0:
+            await asyncio.sleep(wait)
+        self._last_request_at = asyncio.get_event_loop().time()
+
     async def complete(self, request: CompletionRequest) -> CompletionResult:
+        async with self._semaphore:
+            await self._pace()
+            return await self._complete_once(request)
+
+    async def _complete_once(self, request: CompletionRequest) -> CompletionResult:
         payload = self._payload(request)
         for attempt in range(self._max_retries + 1):
             try:

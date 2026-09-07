@@ -173,9 +173,11 @@ def parse_quantity(number: float, unit_text: str | None) -> NormalizedQuantity:
         if tok in _CURRENCY_TOKENS and currency is None:
             currency = _CURRENCY_TOKENS[tok]
             dimension = Dimension.currency
-        elif tok in _SCALE_WORDS and scale_word is None:
-            scale_word = tok
-            scale = _SCALE_WORDS[tok]
+        elif tok in _SCALE_WORDS:
+            # chained scale words multiply: "lakh crore" = 1e5 * 1e7,
+            # "thousand crore" = 1e3 * 1e7 (common in Indian macro reporting)
+            scale_word = f"{scale_word} {tok}" if scale_word else tok
+            scale *= _SCALE_WORDS[tok]
         elif tok in _PERCENT_TOKENS:
             dimension = Dimension.percent
             if tok in {"bps", "basis points"}:

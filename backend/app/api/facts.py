@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.deps import project_scope
 from app.api.pipeline_task import stored_pdf_path
 from app.api.schemas import BBox, EvidenceOut, FactOut
+from app.ingestion.page_images import render_and_store
 from app.models.document import Chunk
 from app.repository import get_document, get_fact, list_facts
 from app.repository.scope import ProjectScope
@@ -64,21 +65,27 @@ async def evidence(fact_id: uuid.UUID, scope: ProjectScope = Depends(project_sco
     document = await get_document(scope, fact.document_id)
     filename = document.filename if document else "document.pdf"
 
-    page_image_url = None
-    if chunk is not None and chunk.page_image_ref:
-        page_image_url = f"{_PAGE_IMAGE_MOUNT}/{chunk.page_image_ref}"
-
     anchor = fact.source_anchor or {}
     span_text = anchor.get("matched_text") or fact.evidence_text
 
+    page_image_url = None
     page_width = page_height = None
     bboxes: list[BBox] = []
     normalized: list[BBox] = []
 
     pdf_path = stored_pdf_path(document.content_hash) if document else Path("/nonexistent")
     if fact.page_number and pdf_path.is_file():
+        data = pdf_path.read_bytes()
         try:
-            with pymupdf.open(pdf_path) as doc:
+            # render (and cache) just this page's image on demand
+            ref = render_and_store(data, document.content_hash, fact.page_number)
+            page_image_url = f"{_PAGE_IMAGE_MOUNT}/{ref}"
+            if chunk is not None and chunk.page_image_ref != ref:
+                chunk.page_image_ref = ref
+        except Exception:  # noqa: BLE001 - the panel falls back to text only
+            page_image_url = None
+        try:
+            with pymupdf.open(stream=data, filetype="pdf") as doc:
                 page = doc[fact.page_number - 1]
                 page_width, page_height = float(page.rect.width), float(page.rect.height)
                 rects = page.search_for(span_text) or page.search_for(fact.evidence_text[:80])
