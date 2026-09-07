@@ -1,0 +1,1197 @@
+{
+  "projects": [
+    {
+      "name": "delhivery-filings",
+      "domain_profile": {
+        "centroid_embedding": null,
+        "sub_clusters": [
+          {
+            "id": "sc_1",
+            "centroid": [],
+            "document_ids": [
+              "d-deck",
+              "d-ar"
+            ],
+            "size": 2
+          }
+        ],
+        "vocabulary": [],
+        "document_count": 2
+      },
+      "documents": [
+        {
+          "ref": "d-deck",
+          "filename": "delhivery-q4-fy24-earnings-presentation.pdf",
+          "content_hash": "5ca307085c96c1fcbfd2d99a7ad40dcbd8958079b3833063520e4e84fdded2a8",
+          "byte_size": 1988328,
+          "content_type_detected": "slides",
+          "page_count": 27
+        },
+        {
+          "ref": "d-ar",
+          "filename": "delhivery-annual-report-fy24-excerpt.pdf",
+          "content_hash": "de6d79adc0667d66f5415fa4fcec4b485a19073744adce44dfca3e34e529fa7a",
+          "byte_size": 6679023,
+          "content_type_detected": "mixed",
+          "page_count": 100
+        }
+      ],
+      "chunks": [],
+      "facts": [
+        {
+          "ref": "dl-1",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 consolidated EBITDA",
+          "value": {
+            "comparator": "eq",
+            "number": 127,
+            "unit": "INR Crore"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {
+            "basis": "consolidated"
+          },
+          "evidence_text": "FY24 EBITDA increased by Rs. 578 Cr to Rs. 127 Cr from Rs. (452 Cr) in FY23",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-2",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY23 consolidated EBITDA",
+          "value": {
+            "comparator": "eq",
+            "number": -452,
+            "unit": "INR Crore"
+          },
+          "period": {
+            "raw_label": "FY23"
+          },
+          "qualifiers": {},
+          "evidence_text": "FY24 EBITDA increased by Rs. 578 Cr to Rs. 127 Cr from Rs. (452 Cr) in FY23",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-3",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 EBITDA increase over FY23",
+          "value": {
+            "comparator": "eq",
+            "number": 578,
+            "unit": "INR Crore"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "FY24 EBITDA increased by Rs. 578 Cr to Rs. 127 Cr from Rs. (452 Cr) in FY23",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-4",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 PAT loss reduction over FY23",
+          "value": {
+            "comparator": "eq",
+            "number": 759,
+            "unit": "INR Crore"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "PAT loss reduced by Rs. 759 Cr from Rs. (1,008 Cr) in FY23",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-5",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY23 profit after tax",
+          "value": {
+            "comparator": "eq",
+            "number": -1008,
+            "unit": "INR Crore"
+          },
+          "period": {
+            "raw_label": "FY23"
+          },
+          "qualifiers": {},
+          "evidence_text": "PAT loss reduced by Rs. 759 Cr from Rs. (1,008 Cr) in FY23",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-6",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery PTL",
+          "entity_resolved": true,
+          "attribute": "YoY revenue growth",
+          "value": {
+            "comparator": "gt",
+            "number": 30,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "PTL: 30%+ YoY growth with significant improvement in profitability and market share",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-7",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery Express Parcel",
+          "entity_resolved": true,
+          "attribute": "service EBITDA profitability",
+          "value": {
+            "comparator": "gt",
+            "number": 18,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "Express Parcel: 18%+ Service EBITDA profitability; robust growth in key segments",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-8",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery TL",
+          "entity_resolved": true,
+          "attribute": "YoY revenue growth",
+          "value": {
+            "comparator": "eq",
+            "number": 40,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "TL: 40% YoY revenue growth with service EBITDA profitability improvement",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-9",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "net working capital days",
+          "value": {
+            "comparator": "eq",
+            "number": 38,
+            "unit": "days"
+          },
+          "period": {
+            "raw_label": "FY23"
+          },
+          "qualifiers": {},
+          "evidence_text": "Sharp YoY reduction in NWC days from 38 to 31 days",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-10",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "net working capital days",
+          "value": {
+            "comparator": "eq",
+            "number": 31,
+            "unit": "days"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "Sharp YoY reduction in NWC days from 38 to 31 days",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-11",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "qualitative",
+          "entity": "Delhivery SCS",
+          "entity_resolved": true,
+          "attribute": "service EBITDA profitability",
+          "value": {
+            "text": "doubled over FY23"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "SCS: Doubled service EBITDA profitability over FY23, strong Q4",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-12",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 revenue from services",
+          "value": {
+            "comparator": "eq",
+            "number": 8142,
+            "unit": "INR Crore"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "₹8,142 Cr FY24 revenue from services",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-13",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "express parcel shipments",
+          "value": {
+            "comparator": "eq",
+            "number": 740,
+            "unit": "million"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "740 Mn Express parcel shipments in FY24",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-14",
+          "document_ref": "d-deck",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 EBITDA margin",
+          "value": {
+            "comparator": "eq",
+            "number": 1.6,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {},
+          "evidence_text": "₹127Cr / 1.6% EBITDA / EBITDA margin",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-15",
+          "document_ref": "d-ar",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 consolidated EBITDA",
+          "value": {
+            "comparator": "eq",
+            "number": 1266,
+            "unit": "INR million"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {
+            "basis": "consolidated",
+            "column_header": "FY24",
+            "row_header": "EBITDA (INR million)"
+          },
+          "evidence_text": "EBITDA (₹ million) and EBITDA margin (%) FY20 FY21 FY22 FY23 FY24 ... 1,266",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-16",
+          "document_ref": "d-ar",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 revenue from services",
+          "value": {
+            "comparator": "eq",
+            "number": 81415,
+            "unit": "INR million"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {
+            "column_header": "FY24",
+            "row_header": "Revenue from services (INR million)"
+          },
+          "evidence_text": "Revenue from services (₹ million) 72,236 FY23 70,536 FY22 81,415 FY24",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-17",
+          "document_ref": "d-ar",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "part-truckload tonnage",
+          "value": {
+            "comparator": "eq",
+            "number": 1429,
+            "unit": "thousand tonnes"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {
+            "column_header": "FY24"
+          },
+          "evidence_text": "Part-truckload tonnage (thousand tonnes) FY20 FY21 FY22 FY23 FY24 ... 1,429",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-18",
+          "document_ref": "d-ar",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "net working capital days",
+          "value": {
+            "comparator": "eq",
+            "number": 31,
+            "unit": "days"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {
+            "column_header": "FY24"
+          },
+          "evidence_text": "Net working capital days 73 47 37 38 31 FY20 FY21 FY22 FY23 FY24",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "dl-19",
+          "document_ref": "d-ar",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Delhivery",
+          "entity_resolved": true,
+          "attribute": "FY24 profit after tax",
+          "value": {
+            "comparator": "eq",
+            "number": -2492,
+            "unit": "INR million"
+          },
+          "period": {
+            "raw_label": "FY24"
+          },
+          "qualifiers": {
+            "column_header": "FY24"
+          },
+          "evidence_text": "Profit after tax (₹ million) (2,689) (4,157) (10,808) (10,078) (2,492)",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        }
+      ],
+      "relationships": [
+        {
+          "fact_a_ref": "dl-1",
+          "fact_b_ref": "dl-15",
+          "relationship_type": "corroborates",
+          "reconciliation_basis": null,
+          "explanation": "Same figure in different units: Rs. 127 Cr equals about Rs. 1,270 million, which agrees with the annual report's Rs. 1,266 million once rounding is allowed. Both are FY24 consolidated EBITDA.",
+          "confidence": 0.95,
+          "investigation_trail": [
+            {
+              "step": 0,
+              "method": "deterministic_precheck",
+              "detail": {
+                "interval_a": [
+                  1265000000.0,
+                  1275000000.0
+                ],
+                "interval_b": [
+                  1265500000.0,
+                  1266500000.0
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "fact_a_ref": "dl-12",
+          "fact_b_ref": "dl-16",
+          "relationship_type": "corroborates",
+          "reconciliation_basis": null,
+          "explanation": "Rs. 8,142 Cr equals Rs. 81,420 million, matching the annual report's Rs. 81,415 million FY24 revenue from services within rounding.",
+          "confidence": 0.95,
+          "investigation_trail": [
+            {
+              "step": 0,
+              "method": "deterministic_precheck"
+            }
+          ]
+        },
+        {
+          "fact_a_ref": "dl-10",
+          "fact_b_ref": "dl-18",
+          "relationship_type": "corroborates",
+          "reconciliation_basis": null,
+          "explanation": "The earnings deck and the annual report both report FY24 net working capital days as 31.",
+          "confidence": 0.96,
+          "investigation_trail": [
+            {
+              "step": 0,
+              "method": "deterministic_precheck"
+            }
+          ]
+        }
+      ],
+      "concepts": [
+        {
+          "kind": "attribute",
+          "canonical_name": "consolidated EBITDA",
+          "raw_aliases": [
+            "FY24 consolidated EBITDA",
+            "FY23 consolidated EBITDA",
+            "EBITDA (INR million)"
+          ],
+          "first_seen_document_ref": "d-deck"
+        },
+        {
+          "kind": "attribute",
+          "canonical_name": "revenue from services",
+          "raw_aliases": [
+            "FY24 revenue from services",
+            "Revenue from services (INR million)"
+          ],
+          "first_seen_document_ref": "d-deck"
+        },
+        {
+          "kind": "attribute",
+          "canonical_name": "net working capital days",
+          "raw_aliases": [
+            "NWC days",
+            "net working capital days"
+          ],
+          "first_seen_document_ref": "d-deck"
+        },
+        {
+          "kind": "entity",
+          "canonical_name": "Delhivery",
+          "raw_aliases": [
+            "Delhivery",
+            "the Company"
+          ],
+          "first_seen_document_ref": "d-deck"
+        }
+      ]
+    },
+    {
+      "name": "india-macroeconomy",
+      "domain_profile": {
+        "centroid_embedding": null,
+        "sub_clusters": [
+          {
+            "id": "sc_1",
+            "centroid": [],
+            "document_ids": [
+              "m-imf",
+              "m-rbi",
+              "m-survey"
+            ],
+            "size": 3
+          }
+        ],
+        "vocabulary": [],
+        "document_count": 3
+      },
+      "documents": [
+        {
+          "ref": "m-imf",
+          "filename": "imf-india-2025-article-iv-excerpt.pdf",
+          "content_hash": "f6d3cfecafd9548920349b29b1137d645c20073434d0ac66485ead9738a0ea4d",
+          "byte_size": 4305245,
+          "content_type_detected": "mixed",
+          "page_count": 95
+        },
+        {
+          "ref": "m-rbi",
+          "filename": "rbi-annual-report-2024-25-excerpt.pdf",
+          "content_hash": "73209a2caa2f5671f2feae065d01602302daaaac9e8230c9c471d99243fd079e",
+          "byte_size": 1507769,
+          "content_type_detected": "mixed",
+          "page_count": 100
+        },
+        {
+          "ref": "m-survey",
+          "filename": "india-economic-survey-2024-25-excerpt.pdf",
+          "content_hash": "86f2e79a3b7b4a3698907897297b9e17fe06d39c074d52e68303066d18a2cf71",
+          "byte_size": 3920928,
+          "content_type_detected": "text_native",
+          "page_count": 89
+        }
+      ],
+      "chunks": [],
+      "facts": [
+        {
+          "ref": "mm-1",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 3,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "real GDP growth",
+          "value": {
+            "comparator": "eq",
+            "number": 6.5,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY2024/25"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF"
+          },
+          "evidence_text": "Following economic growth of 6.5 percent in FY2024/25, real GDP expanded by 7.8 percent in the first quarter of FY2025/26",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-2",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 3,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "real GDP growth (Q1)",
+          "value": {
+            "comparator": "eq",
+            "number": 7.8,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "Q1 FY2025/26"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF"
+          },
+          "evidence_text": "real GDP expanded by 7.8 percent in the first quarter of FY2025/26",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-3",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 3,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "real GDP growth",
+          "value": {
+            "comparator": "eq",
+            "number": 6.6,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY2025/26"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "forecast_vs_actual": "forecast"
+          },
+          "evidence_text": "real GDP is projected to grow at 6.6 percent in FY2025/26 before moderating to 6.2 percent in FY2026/27",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-4",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 3,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "real GDP growth",
+          "value": {
+            "comparator": "eq",
+            "number": 6.2,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "FY2026/27"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "forecast_vs_actual": "forecast"
+          },
+          "evidence_text": "before moderating to 6.2 percent in FY2026/27",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-5",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "real GDP growth (at market prices)",
+          "value": {
+            "comparator": "eq",
+            "number": 6.5,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2024/25"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "column_header": "2024/25",
+            "row_header": "Real GDP (at market prices)"
+          },
+          "evidence_text": "Real GDP (at market prices) 9.7 7.6 9.2 6.5 6.6 6.2",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-6",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "real GDP growth (at market prices)",
+          "value": {
+            "comparator": "eq",
+            "number": 6.6,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2025/26"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "column_header": "2025/26",
+            "row_header": "Real GDP (at market prices)"
+          },
+          "evidence_text": "Real GDP (at market prices) 9.7 7.6 9.2 6.5 6.6 6.2",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-7",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "consumer price inflation (combined)",
+          "value": {
+            "comparator": "eq",
+            "number": 4.6,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2024/25"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "column_header": "2024/25"
+          },
+          "evidence_text": "Consumer prices - Combined 5.5 6.7 5.4 4.6 2.8 4.0",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-8",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "consumer price inflation (combined)",
+          "value": {
+            "comparator": "eq",
+            "number": 2.8,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2025/26"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "column_header": "2025/26"
+          },
+          "evidence_text": "Consumer prices - Combined 5.5 6.7 5.4 4.6 2.8 4.0",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-9",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "India (central government)",
+          "entity_resolved": true,
+          "attribute": "overall balance",
+          "value": {
+            "comparator": "eq",
+            "number": -4.9,
+            "unit": "% of GDP"
+          },
+          "period": {
+            "raw_label": "2024/25"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "column_header": "2024/25"
+          },
+          "evidence_text": "Central government overall balance -6.7 -6.6 -5.5 -4.9 -4.5 -4.5",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-10",
+          "document_ref": "m-imf",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 5,
+          "fact_kind": "quantitative",
+          "entity": "India (general government)",
+          "entity_resolved": true,
+          "attribute": "overall balance",
+          "value": {
+            "comparator": "eq",
+            "number": -7.9,
+            "unit": "% of GDP"
+          },
+          "period": {
+            "raw_label": "2024/25"
+          },
+          "qualifiers": {
+            "asserting_party": "IMF",
+            "column_header": "2024/25"
+          },
+          "evidence_text": "General government overall balance -9.4 -9.0 -8.1 -7.9 -7.1 -7.2",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-11",
+          "document_ref": "m-rbi",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 11,
+          "fact_kind": "quantitative",
+          "entity": "India (central government)",
+          "entity_resolved": true,
+          "attribute": "gross fiscal deficit",
+          "value": {
+            "comparator": "eq",
+            "number": 4.7,
+            "unit": "% of GDP"
+          },
+          "period": {
+            "raw_label": "2024-25"
+          },
+          "qualifiers": {
+            "asserting_party": "RBI",
+            "forecast_vs_actual": "revised estimate"
+          },
+          "evidence_text": "gross fiscal deficit (GFD) declining to 4.7 per cent of GDP in 2024-25 [revised estimates (RE)] from 5.5 per cent of GDP in 2023-24",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-12",
+          "document_ref": "m-rbi",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 11,
+          "fact_kind": "quantitative",
+          "entity": "India (central government)",
+          "entity_resolved": true,
+          "attribute": "gross fiscal deficit",
+          "value": {
+            "comparator": "eq",
+            "number": 5.5,
+            "unit": "% of GDP"
+          },
+          "period": {
+            "raw_label": "2023-24"
+          },
+          "qualifiers": {
+            "asserting_party": "RBI"
+          },
+          "evidence_text": "declining to 4.7 per cent of GDP in 2024-25 ... from 5.5 per cent of GDP in 2023-24",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-13",
+          "document_ref": "m-rbi",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 11,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "gross tax receipts growth",
+          "value": {
+            "comparator": "eq",
+            "number": 11.2,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2024-25"
+          },
+          "qualifiers": {
+            "asserting_party": "RBI"
+          },
+          "evidence_text": "gross-tax and non-tax receipts recorded resilient growth of 11.2 per cent and 32.2 per cent, respectively, in 2024-25 (RE)",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-14",
+          "document_ref": "m-rbi",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 12,
+          "fact_kind": "quantitative",
+          "entity": "India",
+          "entity_resolved": true,
+          "attribute": "foreign exchange reserves",
+          "value": {
+            "comparator": "eq",
+            "number": 668.3,
+            "unit": "USD billion"
+          },
+          "period": {
+            "raw_label": "end-March 2025"
+          },
+          "qualifiers": {
+            "asserting_party": "RBI"
+          },
+          "evidence_text": "ample forex reserves at US$ 668.3 billion (as at end-March 2025), covering 11 months of merchandise imports",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-15",
+          "document_ref": "m-survey",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "United States",
+          "entity_resolved": true,
+          "attribute": "real GDP growth",
+          "value": {
+            "comparator": "eq",
+            "number": 2.8,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2024"
+          },
+          "qualifiers": {
+            "asserting_party": "Economic Survey"
+          },
+          "evidence_text": "Growth in the US is expected to remain strong at 2.8 per cent in 2024 and may decline slightly in 2025",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        },
+        {
+          "ref": "mm-16",
+          "document_ref": "m-survey",
+          "chunk_ref": "",
+          "source_anchor": {},
+          "page_number": 6,
+          "fact_kind": "quantitative",
+          "entity": "Euro area",
+          "entity_resolved": true,
+          "attribute": "real GDP growth",
+          "value": {
+            "comparator": "eq",
+            "number": 0.8,
+            "unit": "%"
+          },
+          "period": {
+            "raw_label": "2024"
+          },
+          "qualifiers": {
+            "asserting_party": "Economic Survey"
+          },
+          "evidence_text": "growth is expected to improve from 0.4 per cent in 2023 to 0.8 per cent in 2024 and further to 1.0 per cent in 2025",
+          "verification_status": "verified",
+          "extraction_confidence": 0.9,
+          "verifier_confidence": 0.92,
+          "notes": []
+        }
+      ],
+      "relationships": [
+        {
+          "fact_a_ref": "mm-1",
+          "fact_b_ref": "mm-5",
+          "relationship_type": "corroborates",
+          "reconciliation_basis": null,
+          "explanation": "The IMF press release states FY2024/25 real GDP growth of 6.5%, and the IMF's own Selected Indicators table reports the same 6.5% for 2024/25. Prose and table agree.",
+          "confidence": 0.97,
+          "investigation_trail": [
+            {
+              "step": 0,
+              "method": "deterministic_precheck"
+            }
+          ]
+        },
+        {
+          "fact_a_ref": "mm-11",
+          "fact_b_ref": "mm-9",
+          "relationship_type": "reconciled_by_context",
+          "reconciliation_basis": "gross fiscal deficit vs overall balance; revised estimate vs projection",
+          "explanation": "RBI reports a 2024-25 gross fiscal deficit of 4.7% of GDP (revised estimates), while the IMF reports a 2024/25 central government overall balance of -4.9% of GDP. The small gap is explained by the different measures (gross fiscal deficit excludes some items captured in the overall balance) and the RBI figure being a revised estimate against the IMF projection.",
+          "confidence": 0.78,
+          "investigation_trail": [
+            {
+              "step": 0,
+              "method": "deterministic_precheck",
+              "reason": "significant qualifier(s) differ: asserting_party"
+            },
+            {
+              "step": 1,
+              "action": "final_classification",
+              "verdict": "reconciled_by_context",
+              "basis": "gross fiscal deficit vs overall balance",
+              "budget_exhausted": false
+            }
+          ]
+        }
+      ],
+      "concepts": [
+        {
+          "kind": "attribute",
+          "canonical_name": "real GDP growth",
+          "raw_aliases": [
+            "real GDP growth",
+            "real GDP growth (at market prices)",
+            "Real GDP (at market prices)"
+          ],
+          "first_seen_document_ref": "m-imf"
+        },
+        {
+          "kind": "attribute",
+          "canonical_name": "consumer price inflation",
+          "raw_aliases": [
+            "consumer price inflation (combined)",
+            "Consumer prices - Combined",
+            "headline inflation"
+          ],
+          "first_seen_document_ref": "m-imf"
+        },
+        {
+          "kind": "attribute",
+          "canonical_name": "central government fiscal deficit",
+          "raw_aliases": [
+            "gross fiscal deficit",
+            "central government overall balance",
+            "GFD"
+          ],
+          "first_seen_document_ref": "m-imf"
+        },
+        {
+          "kind": "entity",
+          "canonical_name": "India",
+          "raw_aliases": [
+            "India",
+            "India (central government)",
+            "India (general government)"
+          ],
+          "first_seen_document_ref": "m-imf"
+        }
+      ]
+    }
+  ]
+}
