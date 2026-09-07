@@ -1,0 +1,44 @@
+# Markdown is not tracked anywhere in this repository, including nested
+# README files. The single exception, the root README.md, is added by hand
+# at the submission step.
+*.md
+!/README.md
+
+# Local-only reference material and source fixtures
+planning/
+datasets/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+*.local
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime artifacts
+uploads/
+storage/
+*.log
