@@ -13,6 +13,8 @@ from app.normalization.units import Dimension, parse_quantity
         (127, "INR Crore", 1.27e9, Dimension.currency, "INR"),
         (1266.41, "INR million", 1.26641e9, Dimension.currency, "INR"),
         (5, "Rs. Lakh", 5e5, Dimension.currency, "INR"),
+        (3.2, "INR lakh crore", 3.2e5 * 1e7, Dimension.currency, "INR"),
+        (45, "thousand crore", 45 * 1e3 * 1e7, Dimension.count, None),
         (2.8, "billion", 2.8e9, Dimension.count, None),
         (740, "Mn", 7.4e8, Dimension.count, None),
         (33, "k", 33_000, Dimension.count, None),
