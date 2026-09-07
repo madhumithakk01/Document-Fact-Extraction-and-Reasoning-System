@@ -14,6 +14,7 @@ export interface ProjectSummary extends Project {
   relationship_count: number;
   relationships_by_type: Record<string, number>;
   concept_count: number;
+  sub_cluster_count: number;
 }
 
 export type ProcessingStatus =
@@ -37,6 +38,8 @@ export interface DocumentOut {
   page_count: number;
   ocr_page_count: number;
   routing_profile: Record<string, unknown>;
+  sub_cluster_id: string | null;
+  off_domain: boolean;
   uploaded_at: string | null;
   created_at: string;
 }

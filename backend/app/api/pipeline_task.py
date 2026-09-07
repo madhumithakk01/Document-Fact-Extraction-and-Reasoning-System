@@ -15,6 +15,7 @@ from pathlib import Path
 from app.comparison.pipeline import compare_document
 from app.config import get_settings
 from app.db import SessionFactory
+from app.domain import profile_new_document
 from app.extraction import extract_document
 from app.extraction.persist import persist_facts
 from app.ingestion import ingest_pdf
@@ -77,8 +78,22 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
             await session.commit()
 
         await _set_status(document_id, "comparing")
+        chunk_texts = [c.text for c in ingestion.chunks]
         async with SessionFactory() as session:
-            await compare_document(session, project_id, document_id, llm=llm, embedder=embedder)
+            assignment = await profile_new_document(
+                session, project_id, document_id, chunk_texts, embedder=embedder
+            )
+            await session.commit()
+
+        async with SessionFactory() as session:
+            await compare_document(
+                session,
+                project_id,
+                document_id,
+                llm=llm,
+                embedder=embedder,
+                off_domain=assignment.off_domain,
+            )
             await session.commit()
 
         await _set_status(document_id, "ready")

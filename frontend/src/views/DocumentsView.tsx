@@ -159,7 +159,18 @@ function DocRow({
 
   return (
     <tr className="group border-b border-hairline hover:bg-raised">
-      <td className="max-w-[22rem] truncate py-2 pr-3 text-text-primary">{doc.filename}</td>
+      <td className="max-w-[22rem] py-2 pr-3">
+        <span className="block truncate text-text-primary">{doc.filename}</span>
+        {doc.off_domain && (
+          <span
+            className="mt-0.5 inline-flex items-center gap-1 rounded border border-reconciled/40 px-1.5 py-0.5 text-meta text-reconciled"
+            title={`Placed in a separate sub-cluster (${doc.sub_cluster_id}) — this document looks topically different from the others in this project.`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-reconciled" />
+            topically different
+          </span>
+        )}
+      </td>
       <td className="py-2 pr-3 text-text-muted">{doc.content_type_detected}</td>
       <td className="py-2 pr-3 font-mono text-text-muted">{doc.page_count || "—"}</td>
       <td className="py-2 pr-3">

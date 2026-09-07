@@ -64,4 +64,5 @@ async def show(
             session, FactRelationship, FactRelationship.relationship_type, project_id
         ),
         concept_count=await _n(CanonicalConcept),
+        sub_cluster_count=len((project.domain_profile or {}).get("sub_clusters", [])),
     )
