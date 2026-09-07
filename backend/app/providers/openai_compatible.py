@@ -6,6 +6,9 @@ contract, so both providers are thin configurations of this class.
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import re
 from typing import Any
 
 import httpx
@@ -16,6 +19,11 @@ from app.providers.base import (
     LLMProvider,
     ProviderError,
 )
+
+logger = logging.getLogger(__name__)
+
+_RETRY_AFTER_IN_BODY = re.compile(r"try again in ([\d.]+)s", re.I)
+_MAX_BACKOFF_SECONDS = 30.0
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -30,6 +38,7 @@ class OpenAICompatibleProvider(LLMProvider):
         default_max_tokens: int,
         timeout_seconds: float,
         require_key: bool = True,
+        max_retries: int = 3,
     ) -> None:
         if require_key and not api_key:
             raise ProviderError(f"{name} provider selected but no API key configured")
@@ -37,6 +46,7 @@ class OpenAICompatibleProvider(LLMProvider):
         self._model = model
         self._default_temperature = default_temperature
         self._default_max_tokens = default_max_tokens
+        self._max_retries = max_retries
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
@@ -70,11 +80,44 @@ class OpenAICompatibleProvider(LLMProvider):
             }
         return payload
 
+    def _retry_delay(self, response: httpx.Response, attempt: int) -> float:
+        header = response.headers.get("retry-after")
+        if header:
+            try:
+                return min(float(header), _MAX_BACKOFF_SECONDS)
+            except ValueError:
+                pass
+        match = _RETRY_AFTER_IN_BODY.search(response.text)
+        if match:
+            return min(float(match.group(1)) + 0.5, _MAX_BACKOFF_SECONDS)
+        return min(2.0**attempt, _MAX_BACKOFF_SECONDS)
+
     async def complete(self, request: CompletionRequest) -> CompletionResult:
-        try:
-            response = await self._client.post("/chat/completions", json=self._payload(request))
-        except httpx.HTTPError as exc:
-            raise ProviderError(f"{self.name} transport error: {exc}") from exc
+        payload = self._payload(request)
+        for attempt in range(self._max_retries + 1):
+            try:
+                response = await self._client.post("/chat/completions", json=payload)
+            except httpx.HTTPError as exc:
+                if attempt < self._max_retries:
+                    await asyncio.sleep(min(2.0**attempt, _MAX_BACKOFF_SECONDS))
+                    continue
+                raise ProviderError(f"{self.name} transport error: {exc}") from exc
+
+            transient = response.status_code == 429 or response.status_code >= 500
+            if transient and attempt < self._max_retries:
+                delay = self._retry_delay(response, attempt)
+                logger.warning(
+                    "%s %d, retrying in %.1fs (attempt %d/%d)",
+                    self.name,
+                    response.status_code,
+                    delay,
+                    attempt + 1,
+                    self._max_retries,
+                )
+                await asyncio.sleep(delay)
+                continue
+            break
+
         if response.status_code >= 400:
             raise ProviderError(
                 f"{self.name} returned {response.status_code}: {response.text[:300]}"
