@@ -34,6 +34,29 @@ logger = logging.getLogger(__name__)
 _MIN_CHUNK_CHARS = 40
 _COLUMN_QUALIFIER_KEYS = ("column_header", "column", "col_header", "col")
 
+_JSON_FALLBACK_INSTRUCTION = (
+    '\n\nReturn ONLY a JSON object of the form {"facts": [ ... ]}. Each fact has '
+    "fact_kind, entity, entity_resolved, attribute, value (object with comparator, "
+    "number, number_high, unit, state, text), period (object with raw_label, "
+    "start_date, end_date), qualifiers (list of {name, value}), evidence_text, and "
+    "extraction_confidence. No prose, no markdown fences."
+)
+
+
+def _is_schema_rejection(exc: ProviderError) -> bool:
+    msg = str(exc).lower()
+    return any(
+        s in msg
+        for s in (
+            "response_format",
+            "json schema",
+            "json_schema",
+            "does not match the expected schema",
+            "generated json",
+        )
+    )
+
+
 # Approximate-language -> comparator, longest phrases first so "at least" wins
 # over "least" etc. Applied only when the model left the comparator as eq/None.
 _APPROX_PATTERNS: list[tuple[re.Pattern[str], Comparator]] = [
@@ -97,20 +120,43 @@ async def extract_from_chunk(
         return [], stats
 
     stats.chunks_called = 1
-    request = CompletionRequest(
-        system=SYSTEM_PROMPT,
-        user=build_user_prompt(chunk),
-        json_schema=EXTRACTION_JSON_SCHEMA,
-        temperature=0.0,
-    )
+    user_prompt = build_user_prompt(chunk)
     try:
-        result = await provider.complete(request)
+        result = await provider.complete(
+            CompletionRequest(
+                system=SYSTEM_PROMPT,
+                user=user_prompt,
+                json_schema=EXTRACTION_JSON_SCHEMA,
+                temperature=0.0,
+            )
+        )
         stats.llm_calls = 1
         raw_facts = _parse_facts(result.json())
     except ProviderError as exc:
-        logger.warning("extraction failed on chunk %d: %s", chunk.index, exc)
-        stats.chunks_failed = 1
-        return [], stats
+        if _is_schema_rejection(exc):
+            # Provider will not accept this structured-output schema; fall back to
+            # a plain JSON instruction so the pipeline still runs.
+            logger.warning(
+                "provider rejected the extraction schema, retrying unconstrained: %s", exc
+            )
+            try:
+                result = await provider.complete(
+                    CompletionRequest(
+                        system=SYSTEM_PROMPT + _JSON_FALLBACK_INSTRUCTION,
+                        user=user_prompt,
+                        temperature=0.0,
+                    )
+                )
+                stats.llm_calls = 1
+                raw_facts = _parse_facts(result.json())
+            except ProviderError as exc2:
+                logger.warning("extraction failed on chunk %d: %s", chunk.index, exc2)
+                stats.chunks_failed = 1
+                return [], stats
+        else:
+            logger.warning("extraction failed on chunk %d: %s", chunk.index, exc)
+            stats.chunks_failed = 1
+            return [], stats
 
     stats.facts_returned = len(raw_facts)
     anchored: list[AnchoredFact] = []

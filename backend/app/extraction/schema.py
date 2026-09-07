@@ -12,6 +12,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+_QUALIFIER_LIST_KEYS = {"name", "key", "label"}
+_QUALIFIER_VALUE_KEYS = {"value", "val", "text"}
+
 
 class FactKind(StrEnum):
     quantitative = "quantitative"
@@ -79,6 +82,27 @@ class CandidateFact(BaseModel):
     qualifiers: dict[str, Any] = Field(default_factory=dict)
     evidence_text: str
     extraction_confidence: float = 0.5
+
+    @field_validator("qualifiers", mode="before")
+    @classmethod
+    def _qualifiers_to_dict(cls, v: Any) -> dict[str, Any]:
+        """Strict JSON-schema mode forbids open-ended object maps, so the model
+        returns qualifiers as a list of {name, value} pairs. Accept either form."""
+        if v is None:
+            return {}
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, list):
+            out: dict[str, Any] = {}
+            for item in v:
+                if not isinstance(item, dict):
+                    continue
+                name = next((item[k] for k in _QUALIFIER_LIST_KEYS if item.get(k)), None)
+                value = next((item[k] for k in _QUALIFIER_VALUE_KEYS if k in item), None)
+                if name:
+                    out[str(name).strip()] = value
+            return out
+        return {}
 
     @field_validator("entity", "attribute", "evidence_text")
     @classmethod
@@ -226,14 +250,23 @@ _FACT_SCHEMA = {
         "value": _VALUE_SCHEMA,
         "period": _PERIOD_SCHEMA,
         "qualifiers": {
-            "type": "object",
+            "type": "array",
             "description": (
-                "Anything needed to compare this fact correctly later: basis, currency, "
-                "audited, forecast_vs_actual, asserting_party, consolidated_vs_standalone. "
-                "For a value read from a table you MUST include the column header as "
-                "'column_header' and the row label as 'row_header'."
+                "Open list of name/value pairs needed to compare this fact fairly "
+                "later: e.g. basis, currency, audited, forecast_vs_actual, "
+                "asserting_party, consolidated_vs_standalone. For a value read from a "
+                "table you MUST include a pair named 'column_header' and one named "
+                "'row_header'. Empty list if none apply."
             ),
-            "additionalProperties": {"type": "string"},
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "name": {"type": "string"},
+                    "value": {"type": "string"},
+                },
+                "required": ["name", "value"],
+            },
         },
         "evidence_text": {
             "type": "string",
