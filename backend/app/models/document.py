@@ -45,6 +45,7 @@ class Document(Base, TimestampMixin):
 
     content_type_detected: Mapped[str] = mapped_column(String(32), nullable=False)
     processing_status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     page_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ocr_page_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
