@@ -16,6 +16,11 @@ An atomic fact is a single claim about one entity: one measurement, one status, 
 or one qualitative assertion. Split compound sentences into separate facts. Do \
 not infer, aggregate, or compute values that are not written on the page.
 
+Extract ONLY facts stated on the current page. Any text under \
+"[continued from previous page]" is context for resolving pronouns and \
+references - never extract a fact whose wording appears only there. Every \
+evidence_text you return must be copyable verbatim from the current page.
+
 For every fact:
 - entity: the specific subject. Resolve "the Company", "it", "the group", and \
 pronouns using the [continued from previous page] context when present. Set \
@@ -34,12 +39,15 @@ number_high).
 ("Crore", "Lakh", "Million", "bn").
 - period.raw_label: the period exactly as written. Only fill start_date / \
 end_date if the page (or its context) states the fiscal-year convention.
-- qualifiers: capture anything needed to compare the fact fairly later - basis, \
-currency, audited vs unaudited, actual vs forecast, standalone vs consolidated, \
-who is asserting it. For any value taken from a table you MUST record \
-"column_header" and "row_header".
-- evidence_text: a verbatim span copied from the page that states the fact. \
-Never paraphrase. Keep it short but self-contained.
+- qualifiers: a list of {name, value} pairs capturing anything needed to \
+compare the fact fairly later - basis, currency, audited vs unaudited, actual \
+vs forecast, standalone vs consolidated, who is asserting it. For any value \
+taken from a table you MUST include a pair named "column_header" and one named \
+"row_header". Use an empty list if nothing applies.
+- evidence_text: a continuous run of text copied verbatim from the current \
+page. Never paraphrase or reorder. Make it long enough that the entity and \
+attribute are clear from the span alone - quote the label together with its \
+number (e.g. "Rs.127Cr / 1.6% EBITDA / EBITDA margin"), not the bare number.
 - extraction_confidence: 0-1, your confidence that this fact is correct and \
 complete as written.
 
