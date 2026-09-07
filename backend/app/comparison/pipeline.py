@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.comparison.adjudicator import Adjudication, RelationshipType, adjudicate_pair
-from app.comparison.candidates import candidates_for_fact
+from app.comparison.candidates import _MAX_COSINE_DISTANCE, candidates_for_fact
 from app.comparison.canonicalize import adjudicate_same_concept
 from app.comparison.embedding import embed_missing_facts
 from app.comparison.persist import persist_relationship, upsert_concept
@@ -128,6 +128,13 @@ async def _existing_pairs(
     return {frozenset((a, b)) for a, b in rows}
 
 
+# An off-domain document forms a new sub-cluster of its own, so a full-strength
+# project-wide search is wasted effort: only a capped, tight cross-cluster pass
+# can surface a deliberate cross-domain link.
+_CROSS_CLUSTER_K = 3
+_CROSS_CLUSTER_MAX_DISTANCE = 0.30
+
+
 async def compare_document(
     session: AsyncSession,
     project_id: uuid.UUID,
@@ -137,10 +144,14 @@ async def compare_document(
     embedder: EmbeddingProvider | None = None,
     k: int = 8,
     run_reconciliation: bool = True,
+    off_domain: bool = False,
 ) -> ComparisonResult:
     llm = llm or get_llm_provider()
     embedder = embedder or get_embedding_provider()
     stats = ComparisonStats()
+
+    cand_k = _CROSS_CLUSTER_K if off_domain else k
+    cand_max_distance = _CROSS_CLUSTER_MAX_DISTANCE if off_domain else _MAX_COSINE_DISTANCE
 
     await embed_missing_facts(session, project_id, provider=embedder)
 
@@ -165,7 +176,10 @@ async def compare_document(
 
     for fact in new_facts:
         stats.facts_considered += 1
-        for cand in await candidates_for_fact(session, project_id, fact, k=k):
+        candidates = await candidates_for_fact(
+            session, project_id, fact, k=cand_k, max_distance=cand_max_distance
+        )
+        for cand in candidates:
             pair = frozenset((fact.fact_id, cand.fact.fact_id))
             if pair in seen:
                 continue
