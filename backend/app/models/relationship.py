@@ -52,7 +52,7 @@ class FactRelationship(Base, TimestampMixin):
     )
 
     relationship_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    reconciliation_basis: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reconciliation_basis: Mapped[str | None] = mapped_column(String(200), nullable=True)
     explanation: Mapped[str] = mapped_column(Text, nullable=False, default="")
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
