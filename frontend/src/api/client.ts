@@ -7,6 +7,7 @@ import type {
   Ontology,
   Project,
   ProjectSummary,
+  QueryResult,
   Relationship,
   RelationshipDetail,
 } from "./types";
@@ -105,4 +106,7 @@ export const api = {
   getOntology: (pid: string) => request<Ontology>(`/projects/${pid}/ontology`),
   getEvaluation: (pid: string) =>
     request<Evaluation>(`/projects/${pid}/evaluation`),
+
+  query: (pid: string, question: string) =>
+    request<QueryResult>(`/projects/${pid}/query`, json({ question })),
 };

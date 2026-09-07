@@ -58,7 +58,7 @@ function ProjectWorkspace({ projectId, tab }: { projectId: string; tab: string }
       </header>
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "ask" && <AskView />}
+        {tab === "ask" && <AskView projectId={projectId} />}
         {tab === "documents" && <DocumentsView projectId={projectId} />}
         {tab === "facts" && <FactsView projectId={projectId} />}
         {tab === "relationships" && <RelationshipsView projectId={projectId} />}

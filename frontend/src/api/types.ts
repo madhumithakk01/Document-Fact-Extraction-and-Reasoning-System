@@ -172,3 +172,46 @@ export interface Evaluation {
   auto_correction_rate: number;
   needs_review_rate: number;
 }
+
+export interface QueryCitation {
+  marker: string;
+  fact_id: string;
+  entity: string;
+  attribute: string;
+  value_summary: string;
+  period: string | null;
+  verification_status: string;
+  document_filename: string;
+  page_number: number | null;
+  evidence_text: string;
+}
+
+export interface QueryDisagreement {
+  relationship_type: "contradicts" | "reconciled_by_context";
+  reconciliation_basis: string | null;
+  explanation: string;
+  marker_a: string;
+  marker_b: string;
+  fact_a_id: string;
+  fact_b_id: string;
+  fact_a_summary: string;
+  fact_b_summary: string;
+}
+
+export interface QueryTraceEntry {
+  step: number;
+  tool: string;
+  args: Record<string, unknown>;
+  rationale: string;
+  result: string;
+}
+
+export interface QueryResult {
+  question: string;
+  answer: string;
+  citations: QueryCitation[];
+  disagreements: QueryDisagreement[];
+  trace: QueryTraceEntry[];
+  fact_ids_considered: string[];
+  tool_calls_used: number;
+}

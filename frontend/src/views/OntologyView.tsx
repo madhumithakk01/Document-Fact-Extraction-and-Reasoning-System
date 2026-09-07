@@ -20,12 +20,24 @@ export function OntologyView({ projectId }: { projectId: string }) {
       />
     );
 
+  const total = groups.reduce((n, g) => n + g.concepts.length, 0);
+
   return (
     <div className="space-y-6 p-6">
+      <p className="text-meta text-text-muted">
+        {total} canonical concept{total === 1 ? "" : "s"} across{" "}
+        {groups.length} document{groups.length === 1 ? "" : "s"}, in the order the
+        project learned them.
+      </p>
       {groups.map((g) => (
         <section key={g.document_id ?? "none"}>
           <h3 className="text-section text-text-primary">
             {g.document_filename ?? "Unattributed"}
+            {g.concepts[0]?.first_seen_at && (
+              <span className="ml-2 font-normal text-meta text-text-muted">
+                {new Date(g.concepts[0].first_seen_at).toLocaleDateString()}
+              </span>
+            )}
           </h3>
           <ul className="mt-2 space-y-1.5">
             {g.concepts.map((c) => (
