@@ -22,13 +22,18 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
         "default_max_tokens": settings.llm_max_tokens,
         "timeout_seconds": settings.llm_timeout_seconds,
     }
+    openai_common = {
+        **common,
+        "max_concurrency": settings.llm_max_concurrency,
+        "min_request_interval": settings.llm_min_request_interval,
+    }
     if settings.llm_provider is ProviderName.groq:
         return OpenAICompatibleProvider(
             name="groq",
             base_url=settings.groq_base_url,
             api_key=settings.groq_api_key,
             model=settings.groq_model,
-            **common,
+            **openai_common,
         )
     if settings.llm_provider is ProviderName.frontier:
         return OpenAICompatibleProvider(
@@ -36,7 +41,7 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
             base_url=settings.frontier_base_url,
             api_key=settings.frontier_api_key,
             model=settings.frontier_model,
-            **common,
+            **openai_common,
         )
     if settings.llm_provider is ProviderName.ollama:
         return OllamaProvider(
