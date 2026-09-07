@@ -47,6 +47,7 @@ class ProjectSummary(ProjectOut):
     relationship_count: int
     relationships_by_type: dict[str, int]
     concept_count: int
+    sub_cluster_count: int
 
 
 # --- documents ---
@@ -62,6 +63,8 @@ class DocumentOut(BaseModel):
     page_count: int
     ocr_page_count: int
     routing_profile: dict[str, Any]
+    sub_cluster_id: str | None
+    off_domain: bool
     uploaded_at: datetime | None
     created_at: datetime
 
@@ -79,6 +82,8 @@ class DocumentOut(BaseModel):
             page_count=d.page_count,
             ocr_page_count=d.ocr_page_count,
             routing_profile=d.routing_profile,
+            sub_cluster_id=d.sub_cluster_id,
+            off_domain=d.off_domain,
             uploaded_at=d.uploaded_at,
             created_at=d.created_at,
         )
