@@ -1,6 +1,7 @@
-"""SQLAlchemy models. The full schema is finalized in a later phase; this
-module currently exposes only the declarative base and metadata."""
+"""SQLAlchemy models. The full fact/relationship schema is finalized in a later
+phase; ingestion introduces the document and chunk tables."""
 
 from app.models.base import Base
+from app.models.document import Chunk, Document
 
-__all__ = ["Base"]
+__all__ = ["Base", "Chunk", "Document"]
