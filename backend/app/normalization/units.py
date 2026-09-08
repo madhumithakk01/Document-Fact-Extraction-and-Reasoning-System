@@ -234,9 +234,23 @@ def _normalize_area(text: str) -> str:
     return text
 
 
+# Compound terms that contain a physical-unit word but are not a unit. Word-level
+# token matching would otherwise read "last-mile" as the distance "mile".
+_NON_UNIT_COMPOUND = re.compile(
+    r"\b(?:"
+    r"(?:last|first|middle|mid|final)[\s-]*miles?"
+    r"|(?:country|green|extra|golden)[\s-]+miles?"
+    r"|(?:air|reward|loyalty|bonus)[\s-]+miles?"
+    r"|frequent[\s-]+flyer[\s-]+miles?"
+    r")\b",
+    re.I,
+)
+
+
 def _tokenize(unit_text: str) -> list[str]:
     text = unit_text.strip().lower()
     text = text.replace("per cent", "percent").replace("basis points", "bps")
+    text = _NON_UNIT_COMPOUND.sub(" ", text)
     text = _normalize_area(text)
     return [t for t in _TOKEN_RE.findall(text) if t not in {".", "of", "the", "in", "a"}]
 
