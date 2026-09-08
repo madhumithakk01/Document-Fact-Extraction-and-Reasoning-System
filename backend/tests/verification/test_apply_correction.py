@@ -1,8 +1,34 @@
 from __future__ import annotations
 
+import pytest
+
 from app.extraction.schema import CandidateFact, Comparator
 from app.verification.schema import VerifierIssue
-from app.verification.verifier import apply_correction
+from app.verification.verifier import _parse_number, apply_correction
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("(1,234)", -1234.0),
+        ("(1,234.50)", -1234.5),
+        ("₹(1,234)", -1234.0),
+        ("Rs (1,234) cr", -1234.0),
+        ("(1,234) crore", -1234.0),
+        ("(1,234 crore)", -1234.0),
+        ("(0)", 0.0),
+        ("(4.5%)", -4.5),  # a parenthesised percentage is a decline
+        # not the accounting convention -> unchanged
+        ("1,234", 1234.0),
+        ("-1,234", -1234.0),
+        ("(-1,234)", -1234.0),
+        ("revenue rose 5%", 5.0),
+        ("EBITDA of 127 (see note 4)", 127.0),
+        ("net loss narrowed", None),
+    ],
+)
+def test_parse_number_handles_parenthesised_negatives(text: str, expected: float | None) -> None:
+    assert _parse_number(text) == expected
 
 
 def fact(**value: object) -> CandidateFact:
@@ -33,6 +59,21 @@ def test_number_correction_parses_grouped_number() -> None:
     patched, change = out
     assert patched.value.number == 1266.41
     assert "value.number" in change
+
+
+def test_number_correction_reads_parenthesised_figure_as_negative() -> None:
+    out = apply_correction(
+        fact(),
+        _issues(
+            {
+                "field": "value.number",
+                "problem": "figure is a loss, shown in parentheses",
+                "suggested_correction": "(1,234)",
+            }
+        ),
+    )
+    assert out is not None
+    assert out[0].value.number == -1234.0
 
 
 def test_unit_correction_applied() -> None:
