@@ -14,7 +14,7 @@ from app.models.concept import CanonicalConcept
 from app.models.document import Document
 from app.models.fact import Fact
 from app.models.relationship import FactRelationship
-from app.repository import create_project, get_project, list_projects
+from app.repository import create_project, delete_project, get_project, list_projects
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -28,6 +28,15 @@ async def create(body: ProjectCreate, session: AsyncSession = Depends(db_session
 @router.get("", response_model=list[ProjectOut])
 async def index(session: AsyncSession = Depends(db_session)) -> list[ProjectOut]:
     return [ProjectOut.of(p) for p in await list_projects(session)]
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete(
+    project_id: uuid.UUID, session: AsyncSession = Depends(db_session)
+) -> None:
+    # everything under the project is removed by ON DELETE CASCADE
+    if not await delete_project(session, project_id):
+        raise HTTPException(status_code=404, detail=f"project {project_id} not found")
 
 
 async def _counts(session: AsyncSession, table, column, project_id: uuid.UUID) -> dict[str, int]:

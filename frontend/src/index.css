@@ -5,6 +5,9 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* Scale the entire interface up proportionally — type, spacing,
+       borders, and the fixed sidebar/evidence widths all grow together. */
+    zoom: 1.15;
   }
 
   html,

@@ -37,11 +37,11 @@ export default {
         ],
       },
       fontSize: {
-        title: ["20px", { lineHeight: "1.3", fontWeight: "600" }],
-        section: ["14px", { lineHeight: "1.4", fontWeight: "600" }],
-        body: ["15px", { lineHeight: "1.6" }],
-        cell: ["13px", { lineHeight: "1.4" }],
-        meta: ["12px", { lineHeight: "1.4" }],
+        title: ["24px", { lineHeight: "1.3", fontWeight: "600" }],
+        section: ["16px", { lineHeight: "1.4", fontWeight: "600" }],
+        body: ["17px", { lineHeight: "1.6" }],
+        cell: ["15px", { lineHeight: "1.4" }],
+        meta: ["13px", { lineHeight: "1.4" }],
       },
       spacing: {
         sidebar: "260px",
