@@ -28,6 +28,9 @@ class ComparableFact:
     qualifiers: dict = field(default_factory=dict)
     canonical_entity: str | None = None
     canonical_attribute: str | None = None
+    # False when extraction had to infer the entity from carried page context
+    # rather than read it on the page itself
+    entity_resolved: bool = True
 
     @classmethod
     def from_fact(cls, fact: Any) -> ComparableFact:
@@ -38,6 +41,7 @@ class ComparableFact:
             value=dict(fact.value or {}),
             period=dict(fact.period or {}),
             qualifiers=dict(fact.qualifiers or {}),
+            entity_resolved=getattr(fact, "entity_resolved", True),
         )
 
     def _entity_key(self) -> str:
@@ -107,6 +111,22 @@ def deterministic_precheck(a: ComparableFact, b: ComparableFact) -> PrecheckResu
             {"period_a": a.period.get("raw_label"), "period_b": b.period.get("raw_label")},
         )
 
+    def _corroborates(reason: str, detail: dict[str, Any] | None = None) -> PrecheckResult:
+        # A deterministic "corroborates" is recorded with no model call, so it must
+        # not rest on an entity that extraction only inferred from page context.
+        if not (a.entity_resolved and b.entity_resolved):
+            return PrecheckResult(
+                PrecheckOutcome.needs_adjudication,
+                "an entity was inferred from carried page context, not stated on the page; "
+                "confirm both facts are about the same subject",
+                {
+                    **(detail or {}),
+                    "entity_resolved_a": a.entity_resolved,
+                    "entity_resolved_b": b.entity_resolved,
+                },
+            )
+        return PrecheckResult(PrecheckOutcome.corroborates, reason, detail or {})
+
     # --- significant qualifiers ---
     differing = differing_significant_qualifiers(a.qualifiers, b.qualifiers)
     if differing:
@@ -121,7 +141,7 @@ def deterministic_precheck(a: ComparableFact, b: ComparableFact) -> PrecheckResu
         na = normalize_value("status", a.value)
         nb = normalize_value("status", b.value)
         if na.state and na.state == nb.state:
-            return PrecheckResult(PrecheckOutcome.corroborates, "same status")
+            return _corroborates("same status")
         return PrecheckResult(
             PrecheckOutcome.needs_adjudication,
             "status values differ",
@@ -154,8 +174,7 @@ def deterministic_precheck(a: ComparableFact, b: ComparableFact) -> PrecheckResu
 
     assert na.interval is not None and nb.interval is not None
     if na.interval.overlaps(nb.interval):
-        return PrecheckResult(
-            PrecheckOutcome.corroborates,
+        return _corroborates(
             "value intervals overlap once units, comparator, and rounding are accounted for",
             {
                 "interval_a": [na.interval.low, na.interval.high],
