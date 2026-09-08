@@ -48,6 +48,36 @@ def test_missing_comparator_defaults_to_eq_without_approx_language() -> None:
     assert fact.value.comparator is Comparator.eq
 
 
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        "delivered 33,250 shipments, up from more than 30,000 a year earlier",
+        "delivered 33,250 shipments (management had guided to over 30,000)",
+        "shipments were 33,250 this quarter; over 40,000 are expected next quarter",
+        "33,250 shipments versus approximately 30,000 in the prior period",
+    ],
+)
+def test_keyword_in_a_neighbouring_clause_does_not_flip_the_exact_figure(evidence: str) -> None:
+    fact = quant(evidence, "eq")
+    assert repair_comparator(fact) is False
+    assert fact.value.comparator is Comparator.eq
+
+
+@pytest.mark.parametrize(
+    ("evidence", "expected"),
+    [
+        ("revenue of over 33,250 crore, up from 30,000 crore last year", Comparator.gt),
+        ("handled approximately 33,250 shipments, in line with guidance", Comparator.approx),
+    ],
+)
+def test_keyword_in_the_number_s_own_clause_still_repairs(
+    evidence: str, expected: Comparator
+) -> None:
+    fact = quant(evidence, "eq")
+    assert repair_comparator(fact) is True
+    assert fact.value.comparator is expected
+
+
 def test_model_supplied_inequality_is_not_overridden() -> None:
     fact = quant("about 33,250 shipments", "gte")
     assert repair_comparator(fact) is False
