@@ -24,6 +24,7 @@ class PeriodKind(StrEnum):
     half = "half"
     calendar_year = "calendar_year"
     multi_year = "multi_year"
+    partial_year = "partial_year"  # "nine months ended ..." and similar stub periods
     date = "date"
     unknown = "unknown"
 
@@ -92,6 +93,32 @@ _DMY_DATE_RE = re.compile(
     re.I,
 )
 _BARE_YEAR_RE = re.compile(r"^\s*(?P<y>\d{4})\s*$")
+
+# "nine months ended <date>" / "quarter ended <date>" / "half year ended <date>":
+# a span whose length is known and whose end is the stated date.
+_NUMBER_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+}
+_STUB_PERIOD_RE = re.compile(
+    r"\b(?:"
+    r"(?P<num>\d{1,2}|" + "|".join(_NUMBER_WORDS) + r")[\s-]*months?"
+    r"|(?P<quarter>quarter)"
+    r"|(?P<half>half[\s-]?year)"
+    r"|(?P<year>year)"
+    r")\s+(?:ended|ending)\b",
+    re.I,
+)
 
 
 def _expand_year(token: str) -> int:
@@ -214,9 +241,34 @@ def parse_period(raw_label: str | None, *, fy_start_month: int | None = None) ->
     return NormalizedPeriod(label, PeriodKind.unknown, None, None)
 
 
+def _stub_period_months(lower: str) -> int | None:
+    """Length in months of a "<N> months / quarter / half year / year ended"
+    phrase, or None if the label is not one."""
+    m = _STUB_PERIOD_RE.search(lower)
+    if m is None:
+        return None
+    if m.group("quarter"):
+        return 3
+    if m.group("half"):
+        return 6
+    if m.group("year"):
+        return 12
+    num = m.group("num")
+    n = int(num) if num.isdigit() else _NUMBER_WORDS[num.lower()]
+    return n if 1 <= n <= 24 else None
+
+
+def _span_start(end: date, months: int) -> date:
+    """First day of the period of ``months`` calendar months ending on ``end``."""
+    index = end.year * 12 + (end.month - 1) - (months - 1)
+    year, month = divmod(index, 12)
+    return date(year, month + 1, 1)
+
+
 def _maybe_year_end(label: str, d: date, fy_month: int, assumed: bool) -> NormalizedPeriod:
-    """A date that lands on a fiscal-year boundary in a "year ended ..." phrase
-    denotes the whole fiscal year, not that single day."""
+    """A date in a "... ended <date>" phrase denotes the span leading up to it,
+    not that single day: a full fiscal year on a fiscal-year boundary, otherwise
+    the "<N> months ended" span whose end is the stated date."""
     lower = label.lower()
     end_month = fy_month - 1 or 12
     is_year_end_phrase = any(
@@ -225,6 +277,16 @@ def _maybe_year_end(label: str, d: date, fy_month: int, assumed: bool) -> Normal
     if is_year_end_phrase and d.month == end_month:
         start, end = _fy_bounds(d.year, fy_month)
         return NormalizedPeriod(label, PeriodKind.fiscal_year, start, end, fy_month, assumed)
+
+    months = _stub_period_months(lower)
+    if months is not None:
+        start = _span_start(d, months)
+        kind = {3: PeriodKind.quarter, 6: PeriodKind.half, 12: PeriodKind.fiscal_year}.get(
+            months, PeriodKind.partial_year
+        )
+        fy = fy_month if kind is PeriodKind.fiscal_year else None
+        return NormalizedPeriod(label, kind, start, d, fy, assumed)
+
     return NormalizedPeriod(label, PeriodKind.date, d, d)
 
 
