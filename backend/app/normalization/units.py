@@ -2,8 +2,8 @@
 
 ``parse_quantity(number, unit_text)`` returns the magnitude on a fixed base unit
 for its dimension (currency -> major currency units, mass -> kilograms, length
--> metres, percent -> a fraction, count -> ones) so two facts written in
-different scales can be compared directly.
+-> metres, area -> square metres, percent -> a fraction, count -> ones) so two
+facts written in different scales can be compared directly.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ class Dimension(StrEnum):
     percent = "percent"
     mass = "mass"
     length = "length"
+    area = "area"
     duration = "duration"
     count = "count"
     ratio = "ratio"
@@ -114,6 +115,15 @@ _PHYSICAL: dict[str, tuple[Dimension, float]] = {
     "mile": (Dimension.length, 1609.344),
     "miles": (Dimension.length, 1609.344),
     "ft": (Dimension.length, 0.3048),
+    # area -> square metres. "square feet" / "sq ft" / "ft2" etc. are folded to
+    # these canonical tokens by _normalize_area before tokenising.
+    "sqm": (Dimension.area, 1.0),
+    "sqcm": (Dimension.area, 1e-4),
+    "sqkm": (Dimension.area, 1e6),
+    "sqft": (Dimension.area, 0.09290304),
+    "sqmi": (Dimension.area, 2_589_988.110336),
+    "acre": (Dimension.area, 4046.8564224),
+    "hectare": (Dimension.area, 10_000.0),
     "day": (Dimension.duration, 1.0),
     "days": (Dimension.duration, 1.0),
     "week": (Dimension.duration, 7.0),
@@ -151,10 +161,39 @@ _COUNT_TOKENS = {
 _PERCENT_TOKENS = {"%", "percent", "per cent", "pct", "percentage", "bps", "basis points"}
 _TOKEN_RE = re.compile(r"[a-z%₹$€£¥.]+|[0-9]+")
 
+# Area is written many ways ("square feet", "sq ft", "sq. ft.", "ft2", "ft²",
+# "sqft"); fold each to one canonical token before tokenising so a single
+# lookup in _PHYSICAL handles it. Order matters: km/cm/mi before the bare "m".
+_AREA_SPELLINGS: list[tuple[str, str]] = [
+    (r"kilomet(?:re|er)s?|kms?", "sqkm"),
+    (r"centimet(?:re|er)s?|cms?", "sqcm"),
+    (r"miles?|mi", "sqmi"),
+    (r"feet|foot|ft", "sqft"),
+    (r"met(?:re|er)s?|m", "sqm"),
+]
+_AREA_NORMALIZERS: list[tuple[re.Pattern[str], str]] = [
+    *(
+        (
+            re.compile(rf"\bsq(?:uare)?\.?\s*(?:{names})\b|\b(?:{names})\s*[2²]\b"),
+            f" {token} ",
+        )
+        for names, token in _AREA_SPELLINGS
+    ),
+    (re.compile(r"\bhectares?\b|\bha\b"), " hectare "),
+    (re.compile(r"\bacres?\b"), " acre "),
+]
+
+
+def _normalize_area(text: str) -> str:
+    for pattern, token in _AREA_NORMALIZERS:
+        text = pattern.sub(token, text)
+    return text
+
 
 def _tokenize(unit_text: str) -> list[str]:
     text = unit_text.strip().lower()
     text = text.replace("per cent", "percent").replace("basis points", "bps")
+    text = _normalize_area(text)
     return [t for t in _TOKEN_RE.findall(text) if t not in {".", "of", "the", "in", "a"}]
 
 
@@ -196,6 +235,7 @@ def parse_quantity(number: float, unit_text: str | None) -> NormalizedQuantity:
             physical_base = {
                 Dimension.mass: "kg",
                 Dimension.length: "m",
+                Dimension.area: "m2",
                 Dimension.duration: "day",
             }[dim]
         elif tok in _COUNT_TOKENS and dimension is Dimension.unknown:
