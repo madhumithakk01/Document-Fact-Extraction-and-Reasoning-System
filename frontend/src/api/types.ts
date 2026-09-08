@@ -20,6 +20,7 @@ export interface ProjectSummary extends Project {
 export type ProcessingStatus =
   | "queued"
   | "extracting"
+  | "partially_ready"
   | "verifying"
   | "comparing"
   | "ready"

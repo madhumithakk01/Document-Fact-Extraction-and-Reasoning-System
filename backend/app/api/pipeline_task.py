@@ -1,11 +1,17 @@
 """End-to-end document processing, run in the background after upload.
 
-    queued -> extracting -> verifying -> comparing -> ready   (or -> failed)
+    queued -> extracting -> [partially_ready ->] verifying -> comparing -> ready
+    (or -> failed at any point)
 
 Uses its own session and its own provider instances (the request's are gone by
 the time this runs). The whole pipeline runs under a wall-clock budget scaled to
 page count; on timeout or an unrecoverable provider error the document is marked
 ``failed`` with a message rather than left on ``extracting`` forever.
+
+A large upload is processed in two passes: the first ~20 pages are extracted and
+verified immediately and the document goes to ``partially_ready`` with a visible
+fact count, then the remaining pages run in the background. Comparison against
+the rest of the project still runs once, over the whole document, at the end.
 """
 
 from __future__ import annotations
@@ -14,6 +20,8 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
+
+from sqlalchemy import delete, func, select
 
 from app.comparison.pipeline import compare_document
 from app.config import get_settings
@@ -25,6 +33,7 @@ from app.ingestion import ingest_pdf
 from app.ingestion.persist import persist_ingestion
 from app.ingestion.types import IngestionResult
 from app.models.document import Document
+from app.models.fact import Fact
 from app.providers.base import EmbeddingProvider, LLMProvider
 from app.providers.factory import get_embedding_provider, get_llm_provider
 from app.providers.observability import RetryNotice, reset_retry_observer, set_retry_observer
@@ -36,6 +45,11 @@ logger = logging.getLogger(__name__)
 _MIN_BUDGET_SECONDS = 600.0
 _SECONDS_PER_PAGE = 8.0
 
+# Large uploads run a fast first pass of this many pages before doing the rest;
+# documents at or below the threshold run in a single pass.
+_FASTPATH_HEAD_PAGES = 20
+_FASTPATH_MIN_TOTAL = 30
+
 
 def stored_pdf_path(content_hash: str) -> Path:
     root = Path(get_settings().upload_dir)
@@ -46,6 +60,14 @@ def stored_pdf_path(content_hash: str) -> Path:
 def _budget_seconds(page_count: int) -> float:
     """Wall-clock ceiling for one document: a floor plus a per-page allowance."""
     return max(_MIN_BUDGET_SECONDS, page_count * _SECONDS_PER_PAGE)
+
+
+def _page_phases(all_pages: list[int]) -> list[list[int]]:
+    """The pages to process in each pass: one pass for a small document, a fast
+    head then the remainder for a large one."""
+    if len(all_pages) <= _FASTPATH_MIN_TOTAL:
+        return [all_pages]
+    return [all_pages[:_FASTPATH_HEAD_PAGES], all_pages[_FASTPATH_HEAD_PAGES:]]
 
 
 async def _set_status(
@@ -102,7 +124,7 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
             budget = _budget_seconds(stored.page_count)
 
         await asyncio.wait_for(
-            _extract_verify_compare(document_id, project_id, ingestion, llm, embedder),
+            _run_pipeline(document_id, project_id, ingestion, llm, embedder),
             timeout=budget,
         )
 
@@ -127,17 +149,28 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
 
 
 async def _write_extraction_progress(
-    document_id: uuid.UUID, progress: ExtractionProgress
+    document_id: uuid.UUID,
+    progress: ExtractionProgress,
+    *,
+    offset: int,
+    grand_total: int,
+    label: str,
 ) -> None:
+    done = offset + progress.pages_done
     async with SessionFactory() as session:
         doc = await session.get(Document, document_id)
-        if doc is not None:
-            doc.pages_processed = progress.pages_done
-            doc.processing_detail = (
-                f"extracting {progress.pages_done}/{progress.pages_total} pages"
-                f" · {progress.facts_so_far} facts so far"
-            )
-            await session.commit()
+        if doc is None:
+            return
+        # facts written by any earlier phase, plus the ones this phase has found
+        already = await session.scalar(
+            select(func.count()).select_from(Fact).where(Fact.document_id == document_id)
+        )
+        doc.pages_processed = done
+        doc.processing_detail = (
+            f"{label} {done}/{grand_total} pages"
+            f" · {int(already or 0) + progress.facts_so_far} facts so far"
+        )
+        await session.commit()
 
 
 async def _write_retry_detail(document_id: uuid.UUID, notice: RetryNotice) -> None:
@@ -151,31 +184,101 @@ async def _write_retry_detail(document_id: uuid.UUID, notice: RetryNotice) -> No
             await session.commit()
 
 
-async def _extract_verify_compare(
+async def _run_pipeline(
     document_id: uuid.UUID,
     project_id: uuid.UUID,
     ingestion: IngestionResult,
     llm: LLMProvider,
     embedder: EmbeddingProvider,
 ) -> None:
+    # start from a clean slate so a re-run never doubles up facts a previous
+    # attempt already persisted (verification logs and relationships cascade)
+    async with SessionFactory() as session:
+        await session.execute(delete(Fact).where(Fact.document_id == document_id))
+        await session.commit()
+
+    all_pages = sorted({c.page_number for c in ingestion.chunks})
+    phases = _page_phases(all_pages)
+    grand_total = len(all_pages)
+    processed = 0
+
+    for i, phase_pages in enumerate(phases):
+        first_of_many = len(phases) > 1 and i == 0
+        label = "fast pass · extracting" if first_of_many else "extracting"
+        await _extract_and_verify(
+            document_id,
+            project_id,
+            ingestion,
+            llm,
+            pages=phase_pages,
+            offset=processed,
+            grand_total=grand_total,
+            label=label,
+            surface_verifying=(i == len(phases) - 1),
+        )
+        processed += len(phase_pages)
+        if first_of_many:
+            async with SessionFactory() as session:
+                head_facts = await session.scalar(
+                    select(func.count()).select_from(Fact).where(Fact.document_id == document_id)
+                )
+            await _set_status(
+                document_id,
+                "partially_ready",
+                detail=(
+                    f"{processed} of {grand_total} pages ready · {int(head_facts or 0)} facts"
+                    f" · processing the rest"
+                ),
+            )
+
+    await _set_status(document_id, "comparing", detail="comparing against existing facts")
+    await _profile_and_compare(document_id, project_id, ingestion, llm, embedder)
+
+
+async def _extract_and_verify(
+    document_id: uuid.UUID,
+    project_id: uuid.UUID,
+    ingestion: IngestionResult,
+    llm: LLMProvider,
+    *,
+    pages: list[int],
+    offset: int,
+    grand_total: int,
+    label: str,
+    surface_verifying: bool,
+) -> None:
     async def _on_progress(progress: ExtractionProgress) -> None:
-        await _write_extraction_progress(document_id, progress)
+        await _write_extraction_progress(
+            document_id, progress, offset=offset, grand_total=grand_total, label=label
+        )
 
     extraction = await extract_document(
-        ingestion, provider=llm, document_id=str(document_id), on_progress=_on_progress
+        ingestion,
+        provider=llm,
+        document_id=str(document_id),
+        pages=pages,
+        on_progress=_on_progress,
     )
     async with SessionFactory() as session:
         fact_rows = await persist_facts(session, project_id, document_id, extraction)
         fact_ids = [r.fact_id for r in fact_rows]
         await session.commit()
 
-    await _set_status(document_id, "verifying", detail=f"verifying {len(fact_ids)} facts")
+    if surface_verifying:
+        await _set_status(document_id, "verifying", detail=f"verifying {len(fact_ids)} facts")
     verification = await verify_extraction(extraction, ingestion.chunks, provider=llm)
     async with SessionFactory() as session:
         await persist_verification(session, project_id, fact_ids, verification)
         await session.commit()
 
-    await _set_status(document_id, "comparing", detail="comparing against existing facts")
+
+async def _profile_and_compare(
+    document_id: uuid.UUID,
+    project_id: uuid.UUID,
+    ingestion: IngestionResult,
+    llm: LLMProvider,
+    embedder: EmbeddingProvider,
+) -> None:
     chunk_texts = [c.text for c in ingestion.chunks]
     async with SessionFactory() as session:
         assignment = await profile_new_document(

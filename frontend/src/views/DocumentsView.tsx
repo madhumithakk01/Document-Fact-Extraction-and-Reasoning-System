@@ -16,6 +16,8 @@ const STATUS_STAGES: ProcessingStatus[] = [
 function statusMeta(s: ProcessingStatus) {
   if (s === "ready") return { label: "Ready", cls: "text-corroborates border-corroborates/40" };
   if (s === "failed") return { label: "Failed", cls: "text-contradicts border-contradicts/40" };
+  if (s === "partially_ready")
+    return { label: "Partial — finishing", cls: "text-reconciled border-reconciled/40" };
   const i = STATUS_STAGES.indexOf(s);
   return {
     label: `${s}  ${i >= 0 ? i + 1 : "?"}/4`,
