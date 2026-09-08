@@ -18,6 +18,21 @@ class PrecheckOutcome(StrEnum):
     not_comparable = "not_comparable"
 
 
+# dimensions that measure a concrete physical/financial quantity: pairing one of
+# these with an unclassified unit is a genuine mismatch, not just a gap
+_CONCRETE_DIMENSIONS = frozenset(
+    {
+        Dimension.currency,
+        Dimension.percent,
+        Dimension.mass,
+        Dimension.length,
+        Dimension.area,
+        Dimension.duration,
+        Dimension.ratio,
+    }
+)
+
+
 @dataclass(frozen=True, slots=True)
 class ComparableFact:
     fact_kind: str
@@ -160,10 +175,30 @@ def deterministic_precheck(a: ComparableFact, b: ComparableFact) -> PrecheckResu
         return PrecheckResult(
             PrecheckOutcome.needs_adjudication, "a value could not be normalized to an interval"
         )
-    if na.dimension != nb.dimension and Dimension.unknown not in (na.dimension, nb.dimension):
+    if na.dimension != nb.dimension:
+        pair = {na.dimension, nb.dimension}
+        if Dimension.unknown in pair:
+            other = (pair - {Dimension.unknown}).pop()
+            if other in _CONCRETE_DIMENSIONS:
+                return PrecheckResult(
+                    PrecheckOutcome.not_comparable,
+                    f"one unit could not be classified, the other is {other}",
+                    {"unit_a": a.value.get("unit"), "unit_b": b.value.get("unit")},
+                )
+            return PrecheckResult(
+                PrecheckOutcome.needs_adjudication,
+                "one unit could not be classified; adjudication needed to compare",
+                {"unit_a": a.value.get("unit"), "unit_b": b.value.get("unit")},
+            )
         return PrecheckResult(
             PrecheckOutcome.not_comparable,
             f"different dimensions ({na.dimension} vs {nb.dimension})",
+        )
+    if na.dimension is Dimension.unknown:
+        return PrecheckResult(
+            PrecheckOutcome.needs_adjudication,
+            "neither unit could be classified; adjudication needed to compare",
+            {"unit_a": a.value.get("unit"), "unit_b": b.value.get("unit")},
         )
     both_currency = na.dimension is Dimension.currency and nb.dimension is Dimension.currency
     if both_currency and na.currency and nb.currency and na.currency != nb.currency:

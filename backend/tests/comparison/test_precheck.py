@@ -51,13 +51,13 @@ def test_inferred_entity_blocks_deterministic_corroboration() -> None:
 def test_inferred_entity_blocks_status_corroboration() -> None:
     # the concept resolver has merged both sides onto the same canonical entity,
     # but one fact's entity was only inferred from carried context
-    common = dict(
-        fact_kind="status",
-        attribute="profitability",
-        value={"state": "profitable"},
-        period={"raw_label": "FY24"},
-        canonical_entity="Delhivery",
-    )
+    common = {
+        "fact_kind": "status",
+        "attribute": "profitability",
+        "value": {"state": "profitable"},
+        "period": {"raw_label": "FY24"},
+        "canonical_entity": "Delhivery",
+    }
     a = ComparableFact(entity="Delhivery", **common)
     b = ComparableFact(entity="the company", entity_resolved=False, **common)
     assert deterministic_precheck(a, b).outcome is PrecheckOutcome.needs_adjudication
@@ -95,6 +95,39 @@ def test_incompatible_dimensions_are_not_comparable() -> None:
         deterministic_precheck(q(6.5, unit="%"), q(6.5, unit="INR Cr")).outcome
         is PrecheckOutcome.not_comparable
     )
+
+
+def test_two_unrecognised_units_go_to_adjudication_not_corroboration() -> None:
+    # identical numbers, but neither "widgets" nor "gizmos" is a known unit
+    r = deterministic_precheck(
+        q(500, unit="widgets", attribute="output"),
+        q(500, unit="gizmos", attribute="output"),
+    )
+    assert r.outcome is PrecheckOutcome.needs_adjudication
+
+
+def test_unrecognised_unit_against_a_concrete_dimension_is_not_comparable() -> None:
+    r = deterministic_precheck(
+        q(500, unit="widgets", attribute="output"),
+        q(500, unit="kg", attribute="output"),
+    )
+    assert r.outcome is PrecheckOutcome.not_comparable
+
+
+def test_unrecognised_unit_against_a_count_goes_to_adjudication() -> None:
+    r = deterministic_precheck(
+        q(45000, unit="SKUs", attribute="catalogue size"),
+        q(45000, unit="units", attribute="catalogue size"),
+    )
+    assert r.outcome is PrecheckOutcome.needs_adjudication
+
+
+def test_broadened_count_vocabulary_still_corroborates() -> None:
+    r = deterministic_precheck(
+        q(45, unit="warehouses", attribute="network size"),
+        q(45, unit="warehouses", attribute="network size"),
+    )
+    assert r.outcome is PrecheckOutcome.corroborates
 
 
 def test_disjoint_periods_are_not_comparable() -> None:
