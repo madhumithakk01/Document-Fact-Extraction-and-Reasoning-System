@@ -19,6 +19,7 @@ from app.providers.base import (
     LLMProvider,
     ProviderError,
 )
+from app.providers.observability import RetryNotice, notify_retry
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class OpenAICompatibleProvider(LLMProvider):
         default_max_tokens: int,
         timeout_seconds: float,
         require_key: bool = True,
-        max_retries: int = 6,
+        max_retries: int = 5,
         max_concurrency: int = 1,
         min_request_interval: float = 0.0,
     ) -> None:
@@ -135,6 +136,15 @@ class OpenAICompatibleProvider(LLMProvider):
                     delay,
                     attempt + 1,
                     self._max_retries,
+                )
+                await notify_retry(
+                    RetryNotice(
+                        provider=self.name,
+                        status_code=response.status_code,
+                        attempt=attempt + 1,
+                        max_attempts=self._max_retries,
+                        delay_seconds=delay,
+                    )
                 )
                 await asyncio.sleep(delay)
                 continue

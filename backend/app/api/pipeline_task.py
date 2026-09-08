@@ -27,6 +27,7 @@ from app.ingestion.types import IngestionResult
 from app.models.document import Document
 from app.providers.base import EmbeddingProvider, LLMProvider
 from app.providers.factory import get_embedding_provider, get_llm_provider
+from app.providers.observability import RetryNotice, reset_retry_observer, set_retry_observer
 from app.verification import verify_extraction
 from app.verification.persist import persist_verification
 
@@ -73,6 +74,9 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
     embedder = get_embedding_provider()
     budget = _budget_seconds(0)
 
+    # surface provider rate-limit backoff onto this document while it processes
+    observer_token = set_retry_observer(lambda notice: _write_retry_detail(document_id, notice))
+
     try:
         async with SessionFactory() as session:
             doc = await session.get(Document, document_id)
@@ -118,6 +122,8 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
         await _set_status(
             document_id, "failed", error=f"{type(exc).__name__}: {exc}"[:1000], detail=None
         )
+    finally:
+        reset_retry_observer(observer_token)
 
 
 async def _write_extraction_progress(
@@ -130,6 +136,17 @@ async def _write_extraction_progress(
             doc.processing_detail = (
                 f"extracting {progress.pages_done}/{progress.pages_total} pages"
                 f" · {progress.facts_so_far} facts so far"
+            )
+            await session.commit()
+
+
+async def _write_retry_detail(document_id: uuid.UUID, notice: RetryNotice) -> None:
+    async with SessionFactory() as session:
+        doc = await session.get(Document, document_id)
+        if doc is not None:
+            doc.processing_detail = (
+                f"rate limited, retrying {notice.attempt}/{notice.max_attempts}"
+                f" in {notice.delay_seconds:.0f}s"
             )
             await session.commit()
 
