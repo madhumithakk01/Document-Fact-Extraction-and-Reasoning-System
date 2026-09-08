@@ -161,6 +161,29 @@ async def test_extract_document_aggregates_and_respects_filters(make_chunk) -> N
     assert paged.stats.chunks_called == 2
 
 
+async def test_extract_document_reports_progress_per_chunk(make_chunk) -> None:
+    chunks = [
+        make_chunk(
+            f"Page {i} states revenue was {i}00 crore this year.", index=i - 1, page_number=i
+        )
+        for i in range(1, 5)
+    ]
+    provider = make_provider(lambda _req: {"facts": [fact_payload(evidence_text="revenue was")]})
+
+    seen: list[tuple[int, int, int]] = []
+
+    async def _on_progress(p) -> None:  # type: ignore[no-untyped-def]
+        seen.append((p.pages_done, p.pages_total, p.facts_so_far))
+
+    await extract_document(
+        _ingestion(chunks), provider=provider, concurrency=1, on_progress=_on_progress
+    )
+
+    assert [d for d, _, _ in seen] == [1, 2, 3, 4]
+    assert all(total == 4 for _, total, _ in seen)
+    assert [f for _, _, f in seen] == [1, 2, 3, 4]
+
+
 def test_stats_merge_is_additive() -> None:
     a = ExtractionStats(facts_kept=2, by_kind={"quantitative": 2})
     b = ExtractionStats(facts_kept=1, by_kind={"status": 1, "quantitative": 1})

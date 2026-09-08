@@ -10,7 +10,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Sequence
+from dataclasses import dataclass
 
 from pydantic import ValidationError
 
@@ -214,6 +215,20 @@ def _merge_stats(into: ExtractionStats, other: ExtractionStats) -> None:
         into.by_kind[k] = into.by_kind.get(k, 0) + v
 
 
+@dataclass(frozen=True, slots=True)
+class ExtractionProgress:
+    """Reported once per chunk as extraction runs, so a caller can surface a
+    live counter instead of a silent wait."""
+
+    pages_done: int
+    pages_total: int
+    facts_so_far: int
+    last_page: int | None
+
+
+ProgressCallback = Callable[[ExtractionProgress], Awaitable[None]]
+
+
 async def extract_document(
     ingestion: IngestionResult,
     *,
@@ -222,6 +237,7 @@ async def extract_document(
     concurrency: int = 3,
     max_chunks: int | None = None,
     pages: Iterable[int] | None = None,
+    on_progress: ProgressCallback | None = None,
 ) -> ExtractionResult:
     provider = provider or get_llm_provider()
     chunks: Sequence[Chunk] = ingestion.chunks
@@ -232,10 +248,25 @@ async def extract_document(
         chunks = list(chunks)[:max_chunks]
 
     semaphore = asyncio.Semaphore(max(1, concurrency))
+    total = len(chunks)
+    progress_lock = asyncio.Lock()
+    done = 0
+    facts_so_far = 0
 
     async def _run(chunk: Chunk) -> tuple[list[AnchoredFact], ExtractionStats]:
+        nonlocal done, facts_so_far
         async with semaphore:
-            return await extract_from_chunk(chunk, provider, document_id=document_id)
+            out = await extract_from_chunk(chunk, provider, document_id=document_id)
+        if on_progress is not None:
+            async with progress_lock:
+                done += 1
+                facts_so_far += len(out[0])
+                snapshot = ExtractionProgress(done, total, facts_so_far, chunk.page_number)
+            try:
+                await on_progress(snapshot)
+            except Exception:  # noqa: BLE001 - progress reporting must never break extraction
+                logger.debug("extraction progress callback failed", exc_info=True)
+        return out
 
     results = await asyncio.gather(*(_run(c) for c in chunks))
 

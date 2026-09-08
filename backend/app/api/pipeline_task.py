@@ -19,7 +19,7 @@ from app.comparison.pipeline import compare_document
 from app.config import get_settings
 from app.db import SessionFactory
 from app.domain import profile_new_document
-from app.extraction import extract_document
+from app.extraction import ExtractionProgress, extract_document
 from app.extraction.persist import persist_facts
 from app.ingestion import ingest_pdf
 from app.ingestion.persist import persist_ingestion
@@ -120,6 +120,20 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
         )
 
 
+async def _write_extraction_progress(
+    document_id: uuid.UUID, progress: ExtractionProgress
+) -> None:
+    async with SessionFactory() as session:
+        doc = await session.get(Document, document_id)
+        if doc is not None:
+            doc.pages_processed = progress.pages_done
+            doc.processing_detail = (
+                f"extracting {progress.pages_done}/{progress.pages_total} pages"
+                f" · {progress.facts_so_far} facts so far"
+            )
+            await session.commit()
+
+
 async def _extract_verify_compare(
     document_id: uuid.UUID,
     project_id: uuid.UUID,
@@ -127,7 +141,12 @@ async def _extract_verify_compare(
     llm: LLMProvider,
     embedder: EmbeddingProvider,
 ) -> None:
-    extraction = await extract_document(ingestion, provider=llm, document_id=str(document_id))
+    async def _on_progress(progress: ExtractionProgress) -> None:
+        await _write_extraction_progress(document_id, progress)
+
+    extraction = await extract_document(
+        ingestion, provider=llm, document_id=str(document_id), on_progress=_on_progress
+    )
     async with SessionFactory() as session:
         fact_rows = await persist_facts(session, project_id, document_id, extraction)
         fact_ids = [r.fact_id for r in fact_rows]

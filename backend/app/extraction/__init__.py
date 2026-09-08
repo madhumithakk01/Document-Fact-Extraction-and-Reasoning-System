@@ -8,7 +8,12 @@ to a character range in the source document and stored unverified; the
 verification loop (next phase) decides which become usable.
 """
 
-from app.extraction.extractor import extract_document, extract_from_chunk
+from app.extraction.extractor import (
+    ExtractionProgress,
+    ProgressCallback,
+    extract_document,
+    extract_from_chunk,
+)
 from app.extraction.schema import (
     AnchoredFact,
     CandidateFact,
@@ -26,8 +31,10 @@ __all__ = [
     "Comparator",
     "ExtractedPeriod",
     "ExtractedValue",
+    "ExtractionProgress",
     "ExtractionResult",
     "FactKind",
+    "ProgressCallback",
     "SourceAnchor",
     "extract_document",
     "extract_from_chunk",
