@@ -64,6 +64,7 @@ def _comparable(fact: Fact) -> ComparableFact:
         value=dict(fact.value or {}),
         period=dict(fact.period or {}),
         qualifiers=dict(fact.qualifiers or {}),
+        entity_resolved=fact.entity_resolved,
     )
 
 

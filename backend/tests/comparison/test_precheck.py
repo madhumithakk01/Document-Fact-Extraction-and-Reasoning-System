@@ -15,6 +15,7 @@ def q(number, unit="INR Crore", comparator="eq", period="FY24", qualifiers=None,
         qualifiers=qualifiers or {},
         canonical_entity=over.get("canonical_entity"),
         canonical_attribute=over.get("canonical_attribute"),
+        entity_resolved=over.get("entity_resolved", True),
     )
 
 
@@ -28,6 +29,43 @@ def test_the_over_33250_case_resolves_with_zero_model_calls() -> None:
 def test_same_figure_different_units_corroborates() -> None:
     a = q(127, unit="INR Crore")
     b = q(1266.41, unit="INR million", period="FY 2023-24")
+    assert deterministic_precheck(a, b).outcome is PrecheckOutcome.corroborates
+
+
+def test_inferred_entity_blocks_deterministic_corroboration() -> None:
+    # values line up, but one fact's entity was only inferred from page context
+    a = q(33250, unit="shipments", comparator="gt", attribute="express parcel shipments")
+    b = q(
+        33278,
+        unit="shipments",
+        comparator="eq",
+        attribute="express parcel shipments",
+        entity_resolved=False,
+    )
+    r = deterministic_precheck(a, b)
+    assert r.outcome is PrecheckOutcome.needs_adjudication
+    assert "inferred" in r.reason
+    assert r.detail["entity_resolved_b"] is False
+
+
+def test_inferred_entity_blocks_status_corroboration() -> None:
+    # the concept resolver has merged both sides onto the same canonical entity,
+    # but one fact's entity was only inferred from carried context
+    common = dict(
+        fact_kind="status",
+        attribute="profitability",
+        value={"state": "profitable"},
+        period={"raw_label": "FY24"},
+        canonical_entity="Delhivery",
+    )
+    a = ComparableFact(entity="Delhivery", **common)
+    b = ComparableFact(entity="the company", entity_resolved=False, **common)
+    assert deterministic_precheck(a, b).outcome is PrecheckOutcome.needs_adjudication
+
+
+def test_both_entities_stated_still_corroborates() -> None:
+    a = q(33250, unit="shipments", comparator="gt", attribute="express parcel shipments")
+    b = q(33278, unit="shipments", comparator="eq", attribute="express parcel shipments")
     assert deterministic_precheck(a, b).outcome is PrecheckOutcome.corroborates
 
 
