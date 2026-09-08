@@ -58,6 +58,8 @@ export function mediaUrl(ref: string | null): string | null {
 export const api = {
   listProjects: () => request<Project[]>("/projects"),
   createProject: (name: string) => request<Project>("/projects", json({ name })),
+  deleteProject: (pid: string) =>
+    request<void>(`/projects/${pid}`, { method: "DELETE" }),
   getProject: (pid: string) => request<ProjectSummary>(`/projects/${pid}`),
 
   listDocuments: (pid: string) =>

@@ -26,14 +26,24 @@ def test_create_list_and_get_project(client) -> None:
         assert summary["fact_count"] == 0
         assert "domain_profile" in summary
     finally:
-        # projects have no delete endpoint; leave it, the name is namespaced
-        pass
+        client.delete(f"/projects/{pid}")
 
 
 def test_missing_project_is_404(client) -> None:
     assert client.get(f"/projects/{uuid.uuid4()}").status_code == 404
     assert client.get(f"/projects/{uuid.uuid4()}/facts").status_code == 404
     assert client.get(f"/projects/{uuid.uuid4()}/documents").status_code == 404
+    assert client.delete(f"/projects/{uuid.uuid4()}").status_code == 404
+
+
+def test_delete_project_removes_it(client) -> None:
+    pid = _new_project(client, "api-test-delete")
+
+    assert client.delete(f"/projects/{pid}").status_code == 204
+    assert client.get(f"/projects/{pid}").status_code == 404
+    assert not any(p["project_id"] == pid for p in client.get("/projects").json())
+    # deleting again is a 404, not a 500
+    assert client.delete(f"/projects/{pid}").status_code == 404
 
 
 def test_reject_blank_project_name(client) -> None:

@@ -31,6 +31,14 @@ export function Sidebar() {
     },
   });
 
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteProject(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      if (id === projectId) setProject(null);
+    },
+  });
+
   return (
     <aside className="flex h-full w-sidebar shrink-0 flex-col border-r border-hairline bg-recessed">
       <div className="px-4 py-4">
@@ -87,17 +95,44 @@ export function Sidebar() {
           </div>
         )}
         {projects.data?.map((p) => (
-          <button
+          <div
             key={p.project_id}
-            onClick={() => setProject(p.project_id)}
-            className={`block w-full truncate rounded px-2 py-1.5 text-left text-cell ${
+            className={`group relative flex items-center rounded ${
               p.project_id === projectId
-                ? "bg-raised text-text-primary"
-                : "text-text-muted hover:text-text-primary"
+                ? "bg-raised"
+                : "hover:bg-raised/50"
             }`}
           >
-            {p.name}
-          </button>
+            <button
+              onClick={() => setProject(p.project_id)}
+              className={`min-w-0 flex-1 truncate rounded px-2 py-1.5 text-left text-cell ${
+                p.project_id === projectId
+                  ? "text-text-primary"
+                  : "text-text-muted group-hover:text-text-primary"
+              }`}
+            >
+              {p.name}
+            </button>
+            <button
+              aria-label={`Delete project ${p.name}`}
+              disabled={remove.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete "${p.name}" and all of its documents, facts, and relationships? This cannot be undone.`,
+                  )
+                )
+                  remove.mutate(p.project_id);
+              }}
+              className="shrink-0 px-2 py-1.5 text-meta text-text-muted opacity-0 transition-opacity hover:text-contradicts focus-visible:opacity-100 group-hover:opacity-100"
+            >
+              {remove.isPending && remove.variables === p.project_id ? (
+                <Spinner />
+              ) : (
+                "remove"
+              )}
+            </button>
+          </div>
         ))}
       </nav>
 
