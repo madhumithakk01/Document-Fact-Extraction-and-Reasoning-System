@@ -31,6 +31,38 @@ def test_parse_period(label, kind, start, end) -> None:
     assert p.end_date == end
 
 
+@pytest.mark.parametrize(
+    ("label", "start", "end"),
+    [
+        ("growth from FY2019 to FY2024", date(2018, 4, 1), date(2024, 3, 31)),
+        ("CAGR between FY19 and FY24", date(2018, 4, 1), date(2024, 3, 31)),
+        ("FY2019 to FY2024", date(2018, 4, 1), date(2024, 3, 31)),
+        ("FY2019-FY2024", date(2018, 4, 1), date(2024, 3, 31)),
+        ("revenue FY24 to FY19", date(2018, 4, 1), date(2024, 3, 31)),
+        ("from 2019 through 2024", date(2019, 1, 1), date(2024, 12, 31)),
+        ("between CY2019 and CY2024", date(2019, 1, 1), date(2024, 12, 31)),
+    ],
+)
+def test_multi_year_range_spans_both_endpoints(label, start, end) -> None:
+    p = parse_period(label)
+    assert p.kind is PeriodKind.multi_year
+    assert (p.start_date, p.end_date) == (start, end)
+
+
+@pytest.mark.parametrize(
+    "label",
+    ["FY 2023-24", "FY2023-2024", "2025-26", "FY24", "Q4 FY24"],
+)
+def test_single_fiscal_year_labels_are_not_read_as_ranges(label) -> None:
+    assert parse_period(label).kind is not PeriodKind.multi_year
+
+
+def test_multi_year_range_relation_contains_inner_year() -> None:
+    outer = parse_period("from FY2019 to FY2024")
+    assert periods_relation(outer, parse_period("FY22")) == "a_contains_b"
+    assert periods_relation(outer, parse_period("FY2030")) == "disjoint"
+
+
 def test_year_ended_phrase_denotes_the_whole_fiscal_year() -> None:
     p = parse_period("for the year ended March 31, 2024")
     assert p.kind is PeriodKind.fiscal_year
