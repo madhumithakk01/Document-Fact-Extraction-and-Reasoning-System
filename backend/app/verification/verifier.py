@@ -57,6 +57,7 @@ _COMPARATOR_WORDS = {
     "exactly": Comparator.eq,
 }
 _NUMBER_RE = re.compile(r"-?\d[\d,]*\.?\d*")
+_CURRENCY_MARKS = " \t₹$€£"  # space, tab, ₹ $ € £
 
 
 def _cited_span(fact: AnchoredFact) -> str:
@@ -65,14 +66,50 @@ def _cited_span(fact: AnchoredFact) -> str:
     return fact.candidate.evidence_text
 
 
+def _in_accounting_parens(text: str, start: int, end: int) -> bool:
+    """True when ``text[start:end]`` is bracketed as ``(1,234)`` in the
+    accounting sense - only currency marks, a short currency word, or a short
+    unit word may sit between the number and the surrounding parentheses."""
+    i = start - 1
+    while i >= 0 and text[i] in _CURRENCY_MARKS:
+        i -= 1
+    word_start = i
+    while word_start >= 0 and text[word_start].isalpha():
+        word_start -= 1
+    if 0 < i - word_start <= 4:  # a currency word like "Rs" / "INR"
+        i = word_start
+        while i >= 0 and text[i] in " \t":
+            i -= 1
+    if i < 0 or text[i] != "(":
+        return False
+
+    n = len(text)
+    k = end
+    while k < n and text[k] in " \t%":
+        k += 1
+    word_end = k
+    while word_end < n and (text[word_end].isalpha() or text[word_end] == "."):
+        word_end += 1
+    if 0 < word_end - k <= 8:  # a unit word like "crore" / "mn" / "cr."
+        k = word_end
+        while k < n and text[k] in " \t":
+            k += 1
+    return k < n and text[k] == ")"
+
+
 def _parse_number(text: str) -> float | None:
-    m = _NUMBER_RE.search(text.replace("−", "-"))
+    normalized = text.replace("−", "-")
+    m = _NUMBER_RE.search(normalized)
     if not m:
         return None
     try:
-        return float(m.group(0).replace(",", ""))
+        value = float(m.group(0).replace(",", ""))
     except ValueError:
         return None
+    # accounting convention: a bare parenthesised figure is negative
+    if value >= 0 and _in_accounting_parens(normalized, m.start(), m.end()):
+        value = -value
+    return value
 
 
 def _parse_comparator(text: str) -> Comparator | None:
