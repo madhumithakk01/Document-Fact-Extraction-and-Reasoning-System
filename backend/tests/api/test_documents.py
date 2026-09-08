@@ -6,7 +6,7 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.api.pipeline_task import _budget_seconds
+from app.api.pipeline_task import _budget_seconds, _page_phases
 from app.config import get_settings
 from app.repository import create_project, delete_project
 from tests.api.conftest import requires_db
@@ -18,6 +18,20 @@ def test_budget_seconds_has_a_floor_and_scales_with_pages() -> None:
     assert _budget_seconds(10) == 600.0  # still under the floor
     assert _budget_seconds(100) == 800.0
     assert _budget_seconds(1000) == 8000.0
+
+
+def test_page_phases_splits_only_large_documents() -> None:
+    small = list(range(1, 26))
+    assert _page_phases(small) == [small]  # single pass
+
+    at_threshold = list(range(1, 31))
+    assert _page_phases(at_threshold) == [at_threshold]
+
+    large = list(range(1, 96))
+    head, tail = _page_phases(large)
+    assert head == list(range(1, 21))  # fast first 20 pages
+    assert tail == list(range(21, 96))
+    assert head + tail == large  # nothing dropped
 
 
 async def _seed_document(status: str) -> tuple[uuid.UUID, uuid.UUID]:
