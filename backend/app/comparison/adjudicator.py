@@ -9,6 +9,7 @@ side between two disagreeing sources: a real contradiction is a valid answer.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -132,6 +133,17 @@ _SCHEMA: dict[str, Any] = {
 }
 
 
+_TRIPLE_QUOTE_RUN = re.compile(r'"{3,}')
+
+
+def _fence_evidence(evidence: str) -> str:
+    """Quote evidence so a stray triple-quote in the source text cannot be read
+    as the closing delimiter: collapse any run of 3+ double-quotes and keep a
+    space between the body and each fence."""
+    body = _TRIPLE_QUOTE_RUN.sub('""', evidence.strip())
+    return f'""" {body} """'
+
+
 def _render(tag: str, fact: ComparableFact, evidence: str) -> str:
     v = fact.value
     if fact.fact_kind == "quantitative":
@@ -150,7 +162,7 @@ def _render(tag: str, fact: ComparableFact, evidence: str) -> str:
         f"  value: {val.strip()}\n"
         f"  period: {fact.period.get('raw_label') or '(none)'}\n"
         f"  qualifiers: {quals}\n"
-        f'  evidence: """{evidence.strip()}"""'
+        f"  evidence: {_fence_evidence(evidence)}"
     )
 
 
