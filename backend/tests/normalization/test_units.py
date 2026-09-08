@@ -57,6 +57,26 @@ def test_area_units_normalize_to_square_metres(number, unit, expected_m2) -> Non
     assert math.isclose(q.magnitude, expected_m2, rel_tol=1e-9)
 
 
+@pytest.mark.parametrize(
+    ("unit", "expected_dim"),
+    [
+        ("last-mile shipments", Dimension.count),
+        ("last mile deliveries", Dimension.count),
+        ("mid-mile trucks", Dimension.count),
+        ("last-mile delivery %", Dimension.percent),
+        ("last-mile", Dimension.unknown),
+        ("air miles", Dimension.unknown),
+        # real distances are untouched
+        ("miles", Dimension.length),
+        ("nautical mile", Dimension.length),
+        ("statute miles", Dimension.length),
+        ("square mile", Dimension.area),
+    ],
+)
+def test_compound_mile_terms_are_not_read_as_distance(unit, expected_dim) -> None:
+    assert parse_quantity(1000, unit).dimension is expected_dim
+
+
 def test_linear_length_is_not_read_as_area() -> None:
     assert parse_quantity(1000, "ft").dimension is Dimension.length
     assert parse_quantity(500, "km").dimension is Dimension.length
