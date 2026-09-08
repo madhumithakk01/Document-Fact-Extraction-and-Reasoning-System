@@ -97,6 +97,57 @@ _APPROX_PATTERNS: list[tuple[re.Pattern[str], Comparator]] = [
 ]
 
 
+# Approximate-language cues are only trusted when they sit next to the fact's own
+# number: scanning the whole evidence span lets "more than" from a neighbouring
+# clause flip an exact figure to an inequality.
+_LEFT_WINDOW = 24
+_RIGHT_WINDOW = 16
+_CLAUSE_BOUNDARY_CHARS = ";:.()[]{}–—,"
+
+
+def _number_forms(number: float) -> list[str]:
+    """Plausible written forms of ``number`` (grouped and plain), longest first."""
+    forms: set[str] = set()
+    magnitude = abs(number)
+    if magnitude == int(magnitude):
+        n = int(magnitude)
+        forms.update((str(n), f"{n:,}"))
+    else:
+        forms.update((repr(magnitude), f"{magnitude:,}", f"{magnitude:.2f}", f"{magnitude:,.2f}"))
+    return sorted(forms, key=len, reverse=True)
+
+
+def _locate_number(evidence: str, number: float) -> tuple[int, int] | None:
+    for form in _number_forms(number):
+        start = 0
+        while (i := evidence.find(form, start)) != -1:
+            before = evidence[i - 1] if i > 0 else ""
+            after_at = i + len(form)
+            after = evidence[after_at] if after_at < len(evidence) else ""
+            if not before.isdigit() and not after.isdigit() and after not in ".,":
+                return i, after_at
+            start = i + 1
+    return None
+
+
+def _clause_around_number(evidence: str, number: float) -> str | None:
+    """The stretch of evidence immediately around where ``number`` is written,
+    clipped at the nearest clause punctuation and a short character window."""
+    span = _locate_number(evidence, number)
+    if span is None:
+        return None
+    lo, hi = span
+    left_bounds = [
+        i for i in (evidence.rfind(ch, 0, lo) for ch in _CLAUSE_BOUNDARY_CHARS) if i != -1
+    ]
+    left_start = max([lo - _LEFT_WINDOW, 0, *(i + 1 for i in left_bounds)])
+    right_bounds = [
+        i for i in (evidence.find(ch, hi) for ch in _CLAUSE_BOUNDARY_CHARS) if i != -1
+    ]
+    right_end = min([hi + _RIGHT_WINDOW, len(evidence), *right_bounds])
+    return evidence[left_start:right_end]
+
+
 def repair_comparator(fact: CandidateFact) -> bool:
     """Deterministic backstop for §6.2: approximated language must never read as
     exact equality. Returns True if the comparator was changed."""
@@ -105,8 +156,15 @@ def repair_comparator(fact: CandidateFact) -> bool:
     current = fact.value.comparator
     if current not in (None, Comparator.eq):
         return False
+
+    haystack = fact.evidence_text
+    if fact.value.number is not None:
+        clause = _clause_around_number(fact.evidence_text, fact.value.number)
+        if clause is not None:
+            haystack = clause
+
     for pattern, comparator in _APPROX_PATTERNS:
-        if pattern.search(fact.evidence_text):
+        if pattern.search(haystack):
             fact.value.comparator = comparator
             return True
     if current is None:
