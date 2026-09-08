@@ -23,6 +23,7 @@ class PeriodKind(StrEnum):
     quarter = "quarter"
     half = "half"
     calendar_year = "calendar_year"
+    multi_year = "multi_year"
     date = "date"
     unknown = "unknown"
 
@@ -50,6 +51,31 @@ _FY_RE = re.compile(
     re.I,
 )
 _BARE_SPAN_RE = re.compile(r"\b(?P<y1>\d{4})\s*[-/–]\s*(?P<y2>\d{2,4})\b")
+
+# A period stated as two fiscal/calendar years joined by a word ("FY2019 to
+# FY2024", "between CY2019 and CY2024", "from 2019 through 2024"). Distinct from
+# a single fiscal-year label like "FY 2023-24": that is a dash-joined pair of
+# consecutive years and is handled by _FY_RE / _BARE_SPAN_RE below.
+_PERIOD_PREFIX = r"(?:fy|f\.y\.|fiscal(?:\s+year)?|financial\s+year|cy|calendar\s+year)"
+_MULTI_YEAR_RES = (
+    re.compile(
+        rf"\bfrom\s+({_PERIOD_PREFIX}\s*)?(\d{{2,4}})\s*"
+        rf"(?:to|through|thru|till|until|[-–—])\s*"
+        rf"({_PERIOD_PREFIX}\s*)?(\d{{2,4}})\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\bbetween\s+({_PERIOD_PREFIX}\s*)?(\d{{2,4}})\s*and\s+"
+        rf"({_PERIOD_PREFIX}\s*)?(\d{{2,4}})\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\b({_PERIOD_PREFIX})\s*(\d{{2,4}})\s*"
+        rf"(?:to|through|thru|till|until|and|[-–—])\s*"
+        rf"({_PERIOD_PREFIX})\s*(\d{{2,4}})\b",
+        re.I,
+    ),
+)
 _QUARTER_RE = re.compile(
     r"\b(?:q\s*(?P<q1>[1-4])|(?P<q2>[1-4])\s*q)\b",
     re.I,
@@ -95,6 +121,28 @@ def _quarter_bounds(fy_start: date, q: int) -> tuple[date, date]:
     return start, date(end_year, end_month_index + 1, last_day)
 
 
+def _match_multi_year(label: str) -> tuple[int, int, bool] | None:
+    """Return ``(low_year, high_year, is_fiscal)`` if the label states a span of
+    two years joined by a word, else ``None``. ``is_fiscal`` is true when either
+    endpoint is explicitly a fiscal/financial year; a bare or calendar-year span
+    resolves against calendar boundaries, matching bare-year handling elsewhere.
+    """
+    for pattern in _MULTI_YEAR_RES:
+        m = pattern.search(label)
+        if not m:
+            continue
+        pfx1, y1, pfx2, y2 = m.groups()
+        a, b = _expand_year(y1), _expand_year(y2)
+        if a == b:
+            return None  # a single year written oddly, let the normal path handle it
+        # "fy", "f.y.", "fiscal", "financial" all begin with "f"; "cy" / "calendar" do not
+        is_fiscal = any(
+            p is not None and p.strip().lower().startswith("f") for p in (pfx1, pfx2)
+        )
+        return min(a, b), max(a, b), is_fiscal
+    return None
+
+
 def parse_period(raw_label: str | None, *, fy_start_month: int | None = None) -> NormalizedPeriod:
     label = (raw_label or "").strip()
     if not label:
@@ -114,6 +162,19 @@ def parse_period(raw_label: str | None, *, fy_start_month: int | None = None) ->
     if text_date and text_date["mon"].lower() in _MONTHS:
         d = date(int(text_date["y"]), _MONTHS[text_date["mon"].lower()], int(text_date["d"]))
         return _maybe_year_end(label, d, fy_month, assumed)
+
+    multi = _match_multi_year(label)
+    if multi:
+        lo, hi, is_fiscal = multi
+        if is_fiscal:
+            start = _fy_bounds(lo, fy_month)[0]
+            end = _fy_bounds(hi, fy_month)[1]
+            return NormalizedPeriod(
+                label, PeriodKind.multi_year, start, end, fy_month, assumed
+            )
+        return NormalizedPeriod(
+            label, PeriodKind.multi_year, date(lo, 1, 1), date(hi, 12, 31), 1, False
+        )
 
     fy = _FY_RE.search(label)
     span = fy or _BARE_SPAN_RE.search(label)
