@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from app.extraction.extractor import extract_document, extract_from_chunk
 from app.extraction.schema import ExtractionStats
 from app.ingestion.types import DocumentContentType, DocumentProfile, IngestionResult
@@ -133,42 +135,80 @@ def _ingestion(chunks) -> IngestionResult:
     )
 
 
-async def test_extract_document_aggregates_and_respects_filters(make_chunk) -> None:
+_PAGE_RE = re.compile(r"=== PAGE (\d+) ===")
+
+
+def _one_fact_per_page(request) -> dict:  # type: ignore[no-untyped-def]
+    """A responder that reads the '=== PAGE N ===' headers in the batched prompt
+    and returns one fact per page, each tagged with its source_page."""
+    seen = [int(n) for n in _PAGE_RE.findall(request.user)]
+    return {
+        "facts": [
+            fact_payload(evidence_text=f"revenue was {n}00 crore", source_page=n) for n in seen
+        ]
+    }
+
+
+async def test_extract_document_batches_text_pages_into_one_call(make_chunk) -> None:
     chunks = [
         make_chunk(
             f"Page {i} states revenue was {i}00 crore this year.", index=i - 1, page_number=i
         )
         for i in range(1, 6)
     ]
-    provider = make_provider(lambda _req: {"facts": [fact_payload(evidence_text="revenue was")]})
+    provider = make_provider(_one_fact_per_page)
 
     full = await extract_document(_ingestion(chunks), provider=provider, concurrency=2)
-    assert full.stats.chunks_called == 5
-    assert full.stats.facts_kept == 5
+    assert full.stats.chunks_called == 5  # all five pages covered
+    assert full.stats.llm_calls == 1  # in a single batched call
+    assert full.stats.facts_kept == 5  # one fact per page, each anchored to its page
+    assert {af.anchor.page_number for af in full.facts} == {1, 2, 3, 4, 5}
 
     limited = await extract_document(
-        _ingestion(chunks),
-        provider=make_provider({"facts": [fact_payload(evidence_text="revenue was")]}),
-        max_chunks=2,
+        _ingestion(chunks), provider=make_provider(_one_fact_per_page), max_chunks=2
     )
     assert limited.stats.chunks_called == 2
 
     paged = await extract_document(
-        _ingestion(chunks),
-        provider=make_provider({"facts": [fact_payload(evidence_text="revenue was")]}),
-        pages=[2, 4],
+        _ingestion(chunks), provider=make_provider(_one_fact_per_page), pages=[2, 4]
     )
     assert paged.stats.chunks_called == 2
+    assert {af.anchor.page_number for af in paged.facts} == {2, 4}
 
 
-async def test_extract_document_reports_progress_per_chunk(make_chunk) -> None:
+async def test_table_pages_are_extracted_on_their_own(make_chunk) -> None:
+    chunks = [
+        make_chunk("Page 1 narrative about revenue of 100 crore.", index=0, page_number=1),
+        make_chunk(
+            "Revenue 8,142 EBITDA 127",
+            index=1,
+            page_number=2,
+            table_markdown="| Metric | FY24 |\n| --- | --- |\n| Revenue | 8,142 |",
+        ),
+        make_chunk("Page 3 narrative about margin of 1.6%.", index=2, page_number=3),
+    ]
+    calls: list[str] = []
+
+    def _responder(request) -> dict:  # type: ignore[no-untyped-def]
+        calls.append(request.system)
+        return {"facts": []}
+
+    await extract_document(_ingestion(chunks), provider=make_provider(_responder), concurrency=1)
+
+    # one call for the table page, one batched call for the two narrative pages
+    assert len(calls) == 2
+
+
+async def test_extract_document_reports_progress_per_batch(make_chunk) -> None:
     chunks = [
         make_chunk(
-            f"Page {i} states revenue was {i}00 crore this year.", index=i - 1, page_number=i
+            f"Page {i} of the report states revenue was {i}00 crore this year.",
+            index=i - 1,
+            page_number=i,
         )
-        for i in range(1, 5)
+        for i in range(1, 9)
     ]
-    provider = make_provider(lambda _req: {"facts": [fact_payload(evidence_text="revenue was")]})
+    provider = make_provider(_one_fact_per_page)
 
     seen: list[tuple[int, int, int]] = []
 
@@ -179,9 +219,10 @@ async def test_extract_document_reports_progress_per_chunk(make_chunk) -> None:
         _ingestion(chunks), provider=provider, concurrency=1, on_progress=_on_progress
     )
 
-    assert [d for d, _, _ in seen] == [1, 2, 3, 4]
-    assert all(total == 4 for _, total, _ in seen)
-    assert [f for _, _, f in seen] == [1, 2, 3, 4]
+    # eight pages, batched 6 + 2, so progress is reported twice
+    assert [d for d, _, _ in seen] == [6, 8]
+    assert all(total == 8 for _, total, _ in seen)
+    assert [f for _, _, f in seen] == [6, 8]
 
 
 def test_stats_merge_is_additive() -> None:

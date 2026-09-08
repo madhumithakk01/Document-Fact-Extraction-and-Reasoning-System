@@ -12,6 +12,7 @@ from app.extraction.extractor import (
     ExtractionProgress,
     ProgressCallback,
     extract_document,
+    extract_from_batch,
     extract_from_chunk,
 )
 from app.extraction.schema import (
@@ -37,5 +38,6 @@ __all__ = [
     "ProgressCallback",
     "SourceAnchor",
     "extract_document",
+    "extract_from_batch",
     "extract_from_chunk",
 ]

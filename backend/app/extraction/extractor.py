@@ -1,8 +1,11 @@
 """Run the schema-constrained extraction call over a document's chunks.
 
-Per chunk: one model call, validate each returned fact, apply the deterministic
-comparator safety net, enforce table column context, anchor the evidence span,
-cap confidence at the chunk's ceiling. Output is unverified ``AnchoredFact``s.
+Consecutive text pages are batched into one model call (the fixed system-prompt
+and schema overhead is paid once per batch, not once per page); table pages are
+called on their own so their column/row rules stay isolated. Each returned fact
+is validated, run through the deterministic comparator safety net, checked for
+table column context, anchored to the page it names, and capped at that page's
+confidence ceiling. Output is unverified ``AnchoredFact``s.
 """
 
 from __future__ import annotations
@@ -15,9 +18,15 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
-from app.extraction.anchoring import anchor_evidence
-from app.extraction.prompts import SYSTEM_PROMPT, build_user_prompt
+from app.extraction.anchoring import anchor_evidence, normalize_for_match
+from app.extraction.prompts import (
+    BATCH_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_batch_user_prompt,
+    build_user_prompt,
+)
 from app.extraction.schema import (
+    BATCH_EXTRACTION_JSON_SCHEMA,
     EXTRACTION_JSON_SCHEMA,
     AnchoredFact,
     CandidateFact,
@@ -35,12 +44,20 @@ logger = logging.getLogger(__name__)
 _MIN_CHUNK_CHARS = 40
 _COLUMN_QUALIFIER_KEYS = ("column_header", "column", "col_header", "col")
 
+# Batch sizing: keep one call's page text well under the token ceiling so that,
+# with ~3.4k tokens of fixed system-prompt + schema overhead, the whole call
+# stays near 6k tokens.
+_BATCH_MAX_PAGES = 6
+_BATCH_CHAR_BUDGET = 10_000
+
 _JSON_FALLBACK_INSTRUCTION = (
     '\n\nReturn ONLY a JSON object of the form {"facts": [ ... ]}. Each fact has '
     "fact_kind, entity, entity_resolved, attribute, value (object with comparator, "
     "number, number_high, unit, state, text), period (object with raw_label, "
-    "start_date, end_date), qualifiers (list of {name, value}), evidence_text, and "
-    "extraction_confidence. No prose, no markdown fences."
+    "start_date, end_date), qualifiers (list of {name, value}), evidence_text, "
+    "extraction_confidence, and source_page (the number from the '=== PAGE N ===' "
+    "header of the page the evidence was copied from, or null if only one page is "
+    "shown). No prose, no markdown fences."
 )
 
 
@@ -110,6 +127,93 @@ def _parse_facts(payload: object) -> list[dict]:
     raise ProviderError(f"extraction response not shaped as {{facts: [...]}}: {payload!r:.200}")
 
 
+def _finalize_candidate(
+    raw: dict, chunk: Chunk, *, document_id: str | None, stats: ExtractionStats
+) -> AnchoredFact | None:
+    """Validate one raw fact against ``chunk`` and anchor its evidence, updating
+    ``stats``. Returns None when the fact is dropped."""
+    try:
+        fact = CandidateFact.model_validate(raw)
+    except ValidationError as exc:
+        logger.debug("invalid candidate fact on page %d: %s", chunk.page_number, exc)
+        stats.dropped_invalid += 1
+        return None
+
+    if repair_comparator(fact):
+        stats.comparator_repaired += 1
+
+    if (
+        chunk.table_markdown
+        and fact.fact_kind is FactKind.quantitative
+        and not _has_column_context(fact)
+    ):
+        stats.dropped_no_column_context += 1
+        return None
+
+    fact.extraction_confidence = min(fact.extraction_confidence, chunk.confidence_ceiling)
+
+    anchor = anchor_evidence(chunk, fact.evidence_text)
+    notes: list[str] = []
+    if anchor is None:
+        stats.unanchored += 1
+        notes.append("evidence span not found in the source chunk")
+    elif not anchor.exact:
+        notes.append("evidence matched after whitespace/quote normalization")
+
+    stats.facts_kept += 1
+    stats.by_kind[fact.fact_kind.value] = stats.by_kind.get(fact.fact_kind.value, 0) + 1
+    return AnchoredFact(candidate=fact, anchor=anchor, document_id=document_id, notes=notes)
+
+
+def _resolve_batch_chunk(raw: dict, chunks: Sequence[Chunk], by_page: dict[int, Chunk]) -> Chunk:
+    """Pick the page a batched fact belongs to: its stated ``source_page`` when
+    that is one of the batch's pages, otherwise the page whose text contains the
+    evidence span, otherwise the first page (anchoring will then flag it)."""
+    sp = raw.get("source_page")
+    if isinstance(sp, int) and sp in by_page:
+        return by_page[sp]
+    evidence = str(raw.get("evidence_text") or "").strip()
+    if evidence:
+        norm = normalize_for_match(evidence)
+        for chunk in chunks:
+            if evidence in chunk.text or (norm and norm in normalize_for_match(chunk.text)):
+                return chunk
+    return chunks[0]
+
+
+def _plan_batches(
+    chunks: Sequence[Chunk],
+    *,
+    max_pages: int = _BATCH_MAX_PAGES,
+    char_budget: int = _BATCH_CHAR_BUDGET,
+) -> list[list[Chunk]]:
+    """Group consecutive text pages so one call covers several; every table page
+    is its own batch so its column/row rules are not diluted by other pages."""
+    batches: list[list[Chunk]] = []
+    current: list[Chunk] = []
+    current_chars = 0
+
+    def _flush() -> None:
+        nonlocal current, current_chars
+        if current:
+            batches.append(current)
+            current = []
+            current_chars = 0
+
+    for chunk in chunks:
+        if chunk.table_markdown:
+            _flush()
+            batches.append([chunk])
+            continue
+        size = len(chunk.text)
+        if current and (len(current) >= max_pages or current_chars + size > char_budget):
+            _flush()
+        current.append(chunk)
+        current_chars += size
+    _flush()
+    return batches
+
+
 async def extract_from_chunk(
     chunk: Chunk,
     provider: LLMProvider,
@@ -161,42 +265,70 @@ async def extract_from_chunk(
 
     stats.facts_returned = len(raw_facts)
     anchored: list[AnchoredFact] = []
-
     for raw in raw_facts:
-        try:
-            fact = CandidateFact.model_validate(raw)
-        except ValidationError as exc:
-            logger.debug("invalid candidate fact on chunk %d: %s", chunk.index, exc)
-            stats.dropped_invalid += 1
-            continue
+        af = _finalize_candidate(raw, chunk, document_id=document_id, stats=stats)
+        if af is not None:
+            anchored.append(af)
+    return anchored, stats
 
-        if repair_comparator(fact):
-            stats.comparator_repaired += 1
 
-        if (
-            chunk.table_markdown
-            and fact.fact_kind is FactKind.quantitative
-            and not _has_column_context(fact)
-        ):
-            stats.dropped_no_column_context += 1
-            continue
+async def extract_from_batch(
+    chunks: Sequence[Chunk],
+    provider: LLMProvider,
+    *,
+    document_id: str | None = None,
+) -> tuple[list[AnchoredFact], ExtractionStats]:
+    """One model call over several text pages. Each returned fact names the page
+    it came from; it is validated and anchored against that page's chunk."""
+    stats = ExtractionStats(chunks_seen=len(chunks))
+    usable = [c for c in chunks if len(c.text.strip()) >= _MIN_CHUNK_CHARS or c.table_markdown]
+    if not usable:
+        return [], stats
 
-        fact.extraction_confidence = min(fact.extraction_confidence, chunk.confidence_ceiling)
-
-        anchor = anchor_evidence(chunk, fact.evidence_text)
-        notes: list[str] = []
-        if anchor is None:
-            stats.unanchored += 1
-            notes.append("evidence span not found in the source chunk")
-        elif not anchor.exact:
-            notes.append("evidence matched after whitespace/quote normalization")
-
-        anchored.append(
-            AnchoredFact(candidate=fact, anchor=anchor, document_id=document_id, notes=notes)
+    pages = [c.page_number for c in chunks]
+    stats.chunks_called = len(chunks)
+    user_prompt = build_batch_user_prompt(list(chunks))
+    try:
+        result = await provider.complete(
+            CompletionRequest(
+                system=BATCH_SYSTEM_PROMPT,
+                user=user_prompt,
+                json_schema=BATCH_EXTRACTION_JSON_SCHEMA,
+                temperature=0.0,
+            )
         )
-        stats.facts_kept += 1
-        stats.by_kind[fact.fact_kind.value] = stats.by_kind.get(fact.fact_kind.value, 0) + 1
+        stats.llm_calls = 1
+        raw_facts = _parse_facts(result.json())
+    except ProviderError as exc:
+        if _is_schema_rejection(exc):
+            logger.warning("provider rejected the batch schema, retrying unconstrained: %s", exc)
+            try:
+                result = await provider.complete(
+                    CompletionRequest(
+                        system=BATCH_SYSTEM_PROMPT + _JSON_FALLBACK_INSTRUCTION,
+                        user=user_prompt,
+                        temperature=0.0,
+                    )
+                )
+                stats.llm_calls = 1
+                raw_facts = _parse_facts(result.json())
+            except ProviderError as exc2:
+                logger.warning("batch extraction failed on pages %s: %s", pages, exc2)
+                stats.chunks_failed = len(chunks)
+                return [], stats
+        else:
+            logger.warning("batch extraction failed on pages %s: %s", pages, exc)
+            stats.chunks_failed = len(chunks)
+            return [], stats
 
+    stats.facts_returned = len(raw_facts)
+    by_page = {c.page_number: c for c in chunks}
+    anchored: list[AnchoredFact] = []
+    for raw in raw_facts:
+        chunk = _resolve_batch_chunk(raw, chunks, by_page)
+        af = _finalize_candidate(raw, chunk, document_id=document_id, stats=stats)
+        if af is not None:
+            anchored.append(af)
     return anchored, stats
 
 
@@ -247,28 +379,32 @@ async def extract_document(
     if max_chunks is not None:
         chunks = list(chunks)[:max_chunks]
 
+    batches = _plan_batches(chunks)
     semaphore = asyncio.Semaphore(max(1, concurrency))
     total = len(chunks)
     progress_lock = asyncio.Lock()
     done = 0
     facts_so_far = 0
 
-    async def _run(chunk: Chunk) -> tuple[list[AnchoredFact], ExtractionStats]:
+    async def _run(batch: list[Chunk]) -> tuple[list[AnchoredFact], ExtractionStats]:
         nonlocal done, facts_so_far
         async with semaphore:
-            out = await extract_from_chunk(chunk, provider, document_id=document_id)
+            if batch[0].table_markdown:
+                out = await extract_from_chunk(batch[0], provider, document_id=document_id)
+            else:
+                out = await extract_from_batch(batch, provider, document_id=document_id)
         if on_progress is not None:
             async with progress_lock:
-                done += 1
+                done += len(batch)
                 facts_so_far += len(out[0])
-                snapshot = ExtractionProgress(done, total, facts_so_far, chunk.page_number)
+                snapshot = ExtractionProgress(done, total, facts_so_far, batch[-1].page_number)
             try:
                 await on_progress(snapshot)
             except Exception:  # noqa: BLE001 - progress reporting must never break extraction
                 logger.debug("extraction progress callback failed", exc_info=True)
         return out
 
-    results = await asyncio.gather(*(_run(c) for c in chunks))
+    results = await asyncio.gather(*(_run(b) for b in batches))
 
     facts: list[AnchoredFact] = []
     totals = ExtractionStats()
@@ -277,10 +413,11 @@ async def extract_document(
         _merge_stats(totals, chunk_stats)
 
     logger.info(
-        "extracted %d fact(s) from %s over %d chunk(s), %d LLM call(s)",
+        "extracted %d fact(s) from %s over %d page(s) in %d batch(es), %d LLM call(s)",
         totals.facts_kept,
         ingestion.filename,
         totals.chunks_called,
+        len(batches),
         totals.llm_calls,
     )
     return ExtractionResult(
