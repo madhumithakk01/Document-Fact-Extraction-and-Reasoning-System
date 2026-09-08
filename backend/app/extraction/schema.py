@@ -82,6 +82,9 @@ class CandidateFact(BaseModel):
     qualifiers: dict[str, Any] = Field(default_factory=dict)
     evidence_text: str
     extraction_confidence: float = 0.5
+    # only meaningful when several pages are extracted in one call: the page the
+    # model copied ``evidence_text`` from. None for a single-page call.
+    source_page: int | None = None
 
     @field_validator("qualifiers", mode="before")
     @classmethod
@@ -297,6 +300,39 @@ EXTRACTION_JSON_SCHEMA: dict[str, Any] = {
             "type": "array",
             "items": _FACT_SCHEMA,
             "description": "Every atomic, independently checkable fact on the page. Empty if none.",
+        }
+    },
+    "required": ["facts"],
+}
+
+# When several pages are sent in one call each fact must say which page it came
+# from, so it can be anchored back to the right page's text.
+_BATCH_FACT_SCHEMA: dict[str, Any] = {
+    **_FACT_SCHEMA,
+    "properties": {
+        **_FACT_SCHEMA["properties"],
+        "source_page": {
+            "type": ["integer", "null"],
+            "description": (
+                "The number in the '=== PAGE N ===' header of the page whose text "
+                "evidence_text was copied from."
+            ),
+        },
+    },
+    "required": [*_FACT_SCHEMA["required"], "source_page"],
+}
+
+BATCH_EXTRACTION_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "facts": {
+            "type": "array",
+            "items": _BATCH_FACT_SCHEMA,
+            "description": (
+                "Every atomic, independently checkable fact across all the pages below. "
+                "Empty if none."
+            ),
         }
     },
     "required": ["facts"],

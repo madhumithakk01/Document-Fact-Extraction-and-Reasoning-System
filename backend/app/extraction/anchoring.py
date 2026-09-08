@@ -22,6 +22,12 @@ def _normalize(s: str) -> str:
     return _WS.sub(" ", s.translate(_QUOTES)).strip().lower()
 
 
+def normalize_for_match(s: str) -> str:
+    """Whitespace/quote/case-folded form used to test whether an evidence span
+    belongs to a given page's text."""
+    return _normalize(s)
+
+
 def _build_norm_map(text: str) -> tuple[str, list[int]]:
     """Return (normalized_text, index_map) where index_map[i] is the offset in
     ``text`` of the i-th character of the normalized string."""
