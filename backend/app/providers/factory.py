@@ -54,6 +54,9 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
 
 @lru_cache
 def get_llm_provider() -> LLMProvider:
+    """Process-wide singleton. Shared across every request and background task;
+    its transport is closed once in the app's lifespan shutdown, never by a
+    per-request or per-document caller."""
     return build_llm_provider(get_settings())
 
 
