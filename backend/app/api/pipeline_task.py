@@ -45,6 +45,10 @@ async def _set_status(document_id: uuid.UUID, status: str, *, error: str | None 
 
 
 async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> None:
+    # Both providers are process-wide singletons (see providers.factory). They are
+    # shared by every concurrently-processing document and are closed once in the
+    # app's lifespan shutdown, never here -- closing the client at the end of one
+    # document would break the others mid-flight.
     llm = get_llm_provider()
     embedder = get_embedding_provider()
     try:
@@ -103,5 +107,3 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
     except Exception as exc:  # noqa: BLE001 - record failure, do not crash the worker
         logger.exception("processing failed for document %s", document_id)
         await _set_status(document_id, "failed", error=f"{type(exc).__name__}: {exc}"[:1000])
-    finally:
-        await llm.aclose()
