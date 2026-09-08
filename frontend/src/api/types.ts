@@ -35,6 +35,9 @@ export interface DocumentOut {
   content_type_detected: string;
   processing_status: ProcessingStatus;
   processing_error: string | null;
+  processing_detail: string | null;
+  pages_total: number | null;
+  pages_processed: number | null;
   page_count: number;
   ocr_page_count: number;
   routing_profile: Record<string, unknown>;
@@ -48,6 +51,9 @@ export interface DocumentStatus {
   document_id: string;
   processing_status: ProcessingStatus;
   processing_error: string | null;
+  processing_detail: string | null;
+  pages_total: number | null;
+  pages_processed: number | null;
   page_count: number;
   chunk_count: number;
   fact_count: number;

@@ -137,6 +137,9 @@ async def poll_status(
         document_id=doc.document_id,
         processing_status=doc.processing_status,
         processing_error=doc.processing_error,
+        processing_detail=doc.processing_detail,
+        pages_total=doc.pages_total,
+        pages_processed=doc.pages_processed,
         page_count=doc.page_count,
         chunk_count=chunk_count,
         fact_count=fact_count,
@@ -155,3 +158,29 @@ async def delete(document_id: uuid.UUID, scope: ProjectScope = Depends(project_s
         )
     )
     await scope.session.flush()
+
+
+@router.post(
+    "/{document_id}/retry",
+    response_model=DocumentOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def retry(
+    background: BackgroundTasks,
+    document_id: uuid.UUID,
+    scope: ProjectScope = Depends(project_scope),
+) -> DocumentOut:
+    doc = await _load(scope, document_id)
+    if doc.processing_status != "failed":
+        raise HTTPException(
+            status_code=409,
+            detail=f"document is '{doc.processing_status}', only failed documents can be retried",
+        )
+    doc.processing_status = "queued"
+    doc.processing_error = None
+    doc.processing_detail = None
+    doc.pages_processed = 0
+    await scope.session.commit()
+
+    background.add_task(process_document, doc.document_id, scope.project_id)
+    return DocumentOut.of(doc)

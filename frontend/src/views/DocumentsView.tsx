@@ -59,6 +59,11 @@ export function DocumentsView({ projectId }: { projectId: string }) {
     },
   });
 
+  const retry = useMutation({
+    mutationFn: (did: string) => api.retryDocument(projectId, did),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents", projectId] }),
+  });
+
   return (
     <div className="p-6">
       <div
@@ -130,6 +135,8 @@ export function DocumentsView({ projectId }: { projectId: string }) {
                 doc={d}
                 projectId={projectId}
                 onDelete={() => del.mutate(d.document_id)}
+                onRetry={() => retry.mutate(d.document_id)}
+                retrying={retry.isPending && retry.variables === d.document_id}
               />
             ))}
           </tbody>
@@ -143,10 +150,14 @@ function DocRow({
   doc,
   projectId,
   onDelete,
+  onRetry,
+  retrying,
 }: {
   doc: DocumentOut;
   projectId: string;
   onDelete: () => void;
+  onRetry: () => void;
+  retrying: boolean;
 }) {
   const active = doc.processing_status !== "ready" && doc.processing_status !== "failed";
   const status = useQuery({
@@ -156,6 +167,7 @@ function DocRow({
     enabled: true,
   });
   const meta = statusMeta(doc.processing_status);
+  const detail = status.data?.processing_detail;
 
   return (
     <tr className="group border-b border-hairline hover:bg-raised">
@@ -175,6 +187,9 @@ function DocRow({
       <td className="py-2 pr-3 font-mono text-text-muted">{doc.page_count || "—"}</td>
       <td className="py-2 pr-3">
         <Badge label={meta.label} className={meta.cls} />
+        {active && detail && (
+          <div className="mt-1 max-w-[24rem] truncate text-meta text-text-muted">{detail}</div>
+        )}
         {doc.processing_status === "failed" && doc.processing_error && (
           <div className="mt-1 max-w-[24rem] truncate text-meta text-contradicts">
             {doc.processing_error}
@@ -185,12 +200,23 @@ function DocRow({
         {status.data?.fact_count ?? "—"}
       </td>
       <td className="py-2 text-right">
-        <button
-          onClick={onDelete}
-          className="text-meta text-text-muted opacity-0 transition-opacity hover:text-contradicts group-hover:opacity-100"
-        >
-          remove
-        </button>
+        <div className="flex justify-end gap-3">
+          {doc.processing_status === "failed" && (
+            <button
+              onClick={onRetry}
+              disabled={retrying}
+              className="text-meta text-text-muted transition-colors hover:text-accent disabled:opacity-50"
+            >
+              {retrying ? "retrying…" : "retry"}
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className="text-meta text-text-muted opacity-0 transition-opacity hover:text-contradicts group-hover:opacity-100"
+          >
+            remove
+          </button>
+        </div>
       </td>
     </tr>
   );

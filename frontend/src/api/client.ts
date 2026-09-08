@@ -68,6 +68,10 @@ export const api = {
     request<DocumentStatus>(`/projects/${pid}/documents/${did}/status`),
   deleteDocument: (pid: string, did: string) =>
     request<void>(`/projects/${pid}/documents/${did}`, { method: "DELETE" }),
+  retryDocument: (pid: string, did: string) =>
+    request<DocumentOut>(`/projects/${pid}/documents/${did}/retry`, {
+      method: "POST",
+    }),
   uploadDocument: (pid: string, file: File) => {
     const form = new FormData();
     form.append("file", file);

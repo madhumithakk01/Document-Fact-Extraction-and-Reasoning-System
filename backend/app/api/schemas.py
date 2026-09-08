@@ -60,6 +60,9 @@ class DocumentOut(BaseModel):
     content_type_detected: str
     processing_status: str
     processing_error: str | None
+    processing_detail: str | None
+    pages_total: int | None
+    pages_processed: int | None
     page_count: int
     ocr_page_count: int
     routing_profile: dict[str, Any]
@@ -79,6 +82,9 @@ class DocumentOut(BaseModel):
             content_type_detected=d.content_type_detected,
             processing_status=d.processing_status,
             processing_error=d.processing_error,
+            processing_detail=d.processing_detail,
+            pages_total=d.pages_total,
+            pages_processed=d.pages_processed,
             page_count=d.page_count,
             ocr_page_count=d.ocr_page_count,
             routing_profile=d.routing_profile,
@@ -93,6 +99,9 @@ class DocumentStatus(BaseModel):
     document_id: uuid.UUID
     processing_status: str
     processing_error: str | None
+    processing_detail: str | None
+    pages_total: int | None
+    pages_processed: int | None
     page_count: int
     chunk_count: int
     fact_count: int
