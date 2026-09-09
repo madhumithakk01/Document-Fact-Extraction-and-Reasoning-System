@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.fact import Fact
 from app.models.verification_log import VerificationLog
+from app.verification.audit import build_correction_record
 from app.verification.schema import VerificationResult
 
 
@@ -52,6 +53,9 @@ async def persist_verification(
 
         if fv.corrected and fv.corrected_fact is not None:
             c = fv.corrected_fact
+            record = build_correction_record(row, c)
+            if record is not None:
+                row.corrections = [*(row.corrections or []), record]
             row.entity = c.entity
             row.entity_resolved = c.entity_resolved
             row.attribute = c.attribute
