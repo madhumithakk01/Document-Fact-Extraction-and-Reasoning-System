@@ -64,6 +64,9 @@ class Fact(Base, TimestampMixin):
     verification_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     extraction_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     verifier_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # which LLM provider actually produced this fact ("groq", "ollama", ...);
+    # differs from the configured primary when a fallback served the call
+    provider_used: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
