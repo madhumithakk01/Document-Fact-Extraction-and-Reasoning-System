@@ -13,9 +13,17 @@ const STATUS_STAGES: ProcessingStatus[] = [
   "ready",
 ];
 
+const TERMINAL_STATUSES: ProcessingStatus[] = ["ready", "failed", "extraction_unavailable"];
+
+function isTerminal(s: ProcessingStatus): boolean {
+  return TERMINAL_STATUSES.includes(s);
+}
+
 function statusMeta(s: ProcessingStatus) {
   if (s === "ready") return { label: "Ready", cls: "text-corroborates border-corroborates/40" };
   if (s === "failed") return { label: "Failed", cls: "text-contradicts border-contradicts/40" };
+  if (s === "extraction_unavailable")
+    return { label: "No LLM provider", cls: "text-contradicts border-contradicts/40" };
   if (s === "partially_ready")
     return { label: "Partial — finishing", cls: "text-reconciled border-reconciled/40" };
   const i = STATUS_STAGES.indexOf(s);
@@ -31,9 +39,7 @@ export function DocumentsView({ projectId }: { projectId: string }) {
     queryKey: ["documents", projectId],
     queryFn: () => api.listDocuments(projectId),
     refetchInterval: (q) =>
-      (q.state.data ?? []).some(
-        (d: DocumentOut) => d.processing_status !== "ready" && d.processing_status !== "failed",
-      )
+      (q.state.data ?? []).some((d: DocumentOut) => !isTerminal(d.processing_status))
         ? 2000
         : false,
   });
@@ -161,7 +167,9 @@ function DocRow({
   onRetry: () => void;
   retrying: boolean;
 }) {
-  const active = doc.processing_status !== "ready" && doc.processing_status !== "failed";
+  const active = !isTerminal(doc.processing_status);
+  const canRetry =
+    doc.processing_status === "failed" || doc.processing_status === "extraction_unavailable";
   const status = useQuery({
     queryKey: ["docStatus", doc.document_id],
     queryFn: () => api.documentStatus(projectId, doc.document_id),
@@ -192,7 +200,7 @@ function DocRow({
         {active && detail && (
           <div className="mt-1 max-w-[24rem] truncate text-meta text-text-muted">{detail}</div>
         )}
-        {doc.processing_status === "failed" && doc.processing_error && (
+        {canRetry && doc.processing_error && (
           <div className="mt-1 max-w-[24rem] truncate text-meta text-contradicts">
             {doc.processing_error}
           </div>
@@ -203,7 +211,7 @@ function DocRow({
       </td>
       <td className="py-2 text-right">
         <div className="flex justify-end gap-3">
-          {doc.processing_status === "failed" && (
+          {canRetry && (
             <button
               onClick={onRetry}
               disabled={retrying}

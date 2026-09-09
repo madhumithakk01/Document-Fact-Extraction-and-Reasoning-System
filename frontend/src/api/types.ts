@@ -25,6 +25,7 @@ export type ProcessingStatus =
   | "comparing"
   | "ready"
   | "failed"
+  | "extraction_unavailable"
   | "pending";
 
 export interface DocumentOut {
@@ -102,6 +103,7 @@ export interface Fact {
   verification_status: VerificationStatus;
   extraction_confidence: number;
   verifier_confidence: number | null;
+  provider_used: string | null;
   notes: unknown[];
   corrections: FactCorrection[];
   source_anchor: Record<string, unknown>;
