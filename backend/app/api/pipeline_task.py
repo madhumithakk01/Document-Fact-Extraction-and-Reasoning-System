@@ -34,7 +34,7 @@ from app.ingestion.persist import persist_ingestion
 from app.ingestion.types import IngestionResult
 from app.models.document import Document
 from app.models.fact import Fact
-from app.providers.base import EmbeddingProvider, LLMProvider
+from app.providers.base import AllProvidersUnavailable, EmbeddingProvider, LLMProvider
 from app.providers.factory import get_embedding_provider, get_llm_provider
 from app.providers.observability import RetryNotice, reset_retry_observer, set_retry_observer
 from app.verification import verify_extraction
@@ -130,6 +130,14 @@ async def process_document(document_id: uuid.UUID, project_id: uuid.UUID) -> Non
 
         await _set_status(document_id, "ready")
         logger.info("document %s processed: status=ready", document_id)
+    except AllProvidersUnavailable as exc:
+        logger.warning("extraction unavailable for document %s: %s", document_id, exc)
+        await _set_status(
+            document_id,
+            "extraction_unavailable",
+            error=f"every LLM provider failed: {exc}"[:1000],
+            detail="no provider could serve extraction",
+        )
     except TimeoutError:
         minutes = budget / 60
         logger.warning("processing timed out for document %s after ~%.0fm", document_id, minutes)

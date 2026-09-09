@@ -171,10 +171,13 @@ async def retry(
     scope: ProjectScope = Depends(project_scope),
 ) -> DocumentOut:
     doc = await _load(scope, document_id)
-    if doc.processing_status != "failed":
+    if doc.processing_status not in ("failed", "extraction_unavailable"):
         raise HTTPException(
             status_code=409,
-            detail=f"document is '{doc.processing_status}', only failed documents can be retried",
+            detail=(
+                f"document is '{doc.processing_status}', only failed or "
+                "extraction_unavailable documents can be retried"
+            ),
         )
     doc.processing_status = "queued"
     doc.processing_error = None
