@@ -39,20 +39,20 @@ def test_bad_groq_key_falls_back_to_ollama_end_to_end(client, tiny_pdf, monkeypa
     get_llm_provider.cache_clear()
 
     pid = client.post("/projects", json={"name": "fallback-live"}).json()["project_id"]
-    up = client.post(
-        f"/projects/{pid}/documents",
-        files={"file": ("acme.pdf", tiny_pdf, "application/pdf")},
-    )
-    assert up.status_code == 202
-    did = up.json()["document_id"]
+    try:
+        up = client.post(
+            f"/projects/{pid}/documents",
+            files={"file": ("acme.pdf", tiny_pdf, "application/pdf")},
+        )
+        assert up.status_code == 202
+        did = up.json()["document_id"]
 
-    status = client.get(f"/projects/{pid}/documents/{did}/status").json()
-    assert status["processing_status"] == "ready", status
-    assert status["fact_count"] > 0
+        status = client.get(f"/projects/{pid}/documents/{did}/status").json()
+        assert status["processing_status"] == "ready", status
+        assert status["fact_count"] > 0
 
-    facts = client.get(f"/projects/{pid}/facts").json()
-    assert facts
-    assert {f["provider_used"] for f in facts} == {"ollama"}
-
-    client.delete(f"/projects/{pid}/documents/{did}")
-    client.delete(f"/projects/{pid}")
+        facts = client.get(f"/projects/{pid}/facts").json()
+        assert facts
+        assert {f["provider_used"] for f in facts} == {"ollama"}
+    finally:
+        client.delete(f"/projects/{pid}")

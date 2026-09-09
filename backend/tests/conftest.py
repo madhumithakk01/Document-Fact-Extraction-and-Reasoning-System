@@ -5,6 +5,11 @@ import pytest
 from app.config import get_settings
 from app.providers.factory import get_embedding_provider, get_llm_provider
 
+# NEXT STEP: DB-backed tests build engines from get_settings().database_url in
+# several places, so they run against the same database the dev server and demo
+# use. Have them honour a TEST_DATABASE_URL (falling back to DATABASE_URL) so the
+# two can be pointed at separate databases.
+
 
 @pytest.fixture(autouse=True)
 def _clear_caches() -> None:

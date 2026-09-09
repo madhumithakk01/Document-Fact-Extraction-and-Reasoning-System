@@ -45,39 +45,41 @@ def test_groq_primary_ollama_blind_corroboration_end_to_end(
     get_llm_provider.cache_clear()
 
     pid = client.post("/projects", json={"name": "dual-extract-live"}).json()["project_id"]
-    up = client.post(
-        f"/projects/{pid}/documents",
-        files={"file": ("acme.pdf", tiny_pdf, "application/pdf")},
-    )
-    assert up.status_code == 202
-    did = up.json()["document_id"]
+    try:
+        up = client.post(
+            f"/projects/{pid}/documents",
+            files={"file": ("acme.pdf", tiny_pdf, "application/pdf")},
+        )
+        assert up.status_code == 202
+        did = up.json()["document_id"]
 
-    status = client.get(f"/projects/{pid}/documents/{did}/status").json()
-    assert status["processing_status"] == "ready", status
+        status = client.get(f"/projects/{pid}/documents/{did}/status").json()
+        assert status["processing_status"] == "ready", status
 
-    facts = client.get(f"/projects/{pid}/facts").json()
-    assert facts
+        facts = client.get(f"/projects/{pid}/facts").json()
+        assert facts
 
-    corroborated = [f for f in facts if f["corroboration"]]
-    assert corroborated, "every extracted fact should carry a corroboration verdict"
+        corroborated = [f for f in facts if f["corroboration"]]
+        assert corroborated, "every extracted fact should carry a corroboration verdict"
 
-    for f in corroborated:
-        c = f["corroboration"]
-        assert c["blind_provider"] == "ollama"
-        assert c["status"] in ("independently_corroborated", "single_source_unconfirmed")
-        expected = _CORROBORATED if c["status"] == "independently_corroborated" else _UNCONFIRMED
-        # the score (minus any assumed-flag penalty) replaces the flat verifier value
-        assert 0.05 <= f["verifier_confidence"] <= expected + 1e-9
-        if c["status"] == "single_source_unconfirmed":
-            assert c["needs_human_review"] is True
+        for f in corroborated:
+            c = f["corroboration"]
+            assert c["blind_provider"] == "ollama"
+            assert c["status"] in ("independently_corroborated", "single_source_unconfirmed")
+            expected = (
+                _CORROBORATED if c["status"] == "independently_corroborated" else _UNCONFIRMED
+            )
+            # the score (minus any assumed-flag penalty) replaces the flat verifier value
+            assert 0.05 <= f["verifier_confidence"] <= expected + 1e-9
+            if c["status"] == "single_source_unconfirmed":
+                assert c["needs_human_review"] is True
 
-    agreed = [
-        f
-        for f in corroborated
-        if f["corroboration"]["status"] == "independently_corroborated"
-    ]
-    assert agreed, "expected at least one fact both providers independently extracted"
-    assert agreed[0]["corroboration"]["corroborating_provider"] == "ollama"
-
-    client.delete(f"/projects/{pid}/documents/{did}")
-    client.delete(f"/projects/{pid}")
+        agreed = [
+            f
+            for f in corroborated
+            if f["corroboration"]["status"] == "independently_corroborated"
+        ]
+        assert agreed, "expected at least one fact both providers independently extracted"
+        assert agreed[0]["corroboration"]["corroborating_provider"] == "ollama"
+    finally:
+        client.delete(f"/projects/{pid}")
