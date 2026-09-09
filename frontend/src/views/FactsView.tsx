@@ -6,7 +6,7 @@ import { EmptyState, ErrorState, Spinner } from "@/components/common";
 import { Monogram } from "@/components/Monogram";
 import type { Fact } from "@/api/types";
 import { formatValue, periodLabel } from "@/lib/format";
-import { STATUS_META } from "@/lib/semantic";
+import { ASSUMPTION_LABELS, STATUS_META, factAssumptions } from "@/lib/semantic";
 import { useUi } from "@/state/ui";
 
 type SortKey = "entity" | "attribute" | "value" | "period" | "status";
@@ -100,6 +100,7 @@ export function FactsView({ projectId }: { projectId: string }) {
             <tbody>
               {rows.map((f) => {
                 const st = STATUS_META[f.verification_status];
+                const assumed = factAssumptions(f.qualifiers);
                 return (
                   <tr
                     key={f.fact_id}
@@ -132,7 +133,24 @@ export function FactsView({ projectId }: { projectId: string }) {
                       {periodLabel(f)}
                     </td>
                     <td className="py-1.5 pr-3">
-                      <Badge label={st.label} className={st.className} />
+                      <span className="flex flex-wrap items-center gap-1">
+                        <Badge label={st.label} className={st.className} />
+                        {assumed.map((flag) => (
+                          <Badge
+                            key={flag}
+                            label={`⚠ ${ASSUMPTION_LABELS[flag] ?? flag}`}
+                            className="text-review border-review/50"
+                          />
+                        ))}
+                        {assumed.length > 0 && (
+                          <span
+                            title="confidence lowered for the assumptions above"
+                            className="font-mono text-meta text-text-muted"
+                          >
+                            {(f.extraction_confidence * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="py-1.5 pr-4 text-meta text-text-muted">
                       p{f.page_number ?? "?"}

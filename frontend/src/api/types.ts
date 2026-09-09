@@ -97,7 +97,7 @@ export interface Fact {
   attribute: string;
   value: FactValue;
   period: FactPeriod;
-  qualifiers: Record<string, string>;
+  qualifiers: Record<string, string | string[]>;
   evidence_text: string;
   verification_status: VerificationStatus;
   extraction_confidence: number;
