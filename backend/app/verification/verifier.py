@@ -139,7 +139,9 @@ async def independent_verify(
     payload = result.json()
     if not isinstance(payload, dict):
         raise ProviderError(f"verifier returned non-object: {payload!r:.200}")
-    return IndependentVerification.model_validate(payload)
+    verification = IndependentVerification.model_validate(payload)
+    verification.provider = result.provider
+    return verification
 
 
 def apply_correction(
@@ -251,7 +253,11 @@ async def verify_fact(
             stage=VerificationStage.independent_verify,
             result=verification.verdict.value,
             issue="; ".join(f"{i.field}: {i.problem}" for i in verification.issues) or None,
-            detail={"supported_confidence": verification.supported_confidence, "attempt": 1},
+            detail={
+                "supported_confidence": verification.supported_confidence,
+                "attempt": 1,
+                "provider": verification.provider,
+            },
         )
     )
 
@@ -307,6 +313,7 @@ async def verify_fact(
                 "supported_confidence": recheck.supported_confidence,
                 "attempt": 2,
                 "correction": change,
+                "provider": recheck.provider,
             },
         )
     )
