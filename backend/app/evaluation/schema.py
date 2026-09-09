@@ -17,6 +17,7 @@ class DocumentEvaluation(BaseModel):
     grounding_checks: int
     grounding_pass: int
     grounding_pass_rate: float
+    candidates_dropped_for_grounding: int = 0
 
 
 class TimelinePoint(BaseModel):
@@ -35,6 +36,14 @@ class EvaluationReport(BaseModel):
     grounding_checks: int
     grounding_pass: int
     grounding_pass_rate: float
+
+    # honest survivorship: what the extractor proposed vs what got through
+    candidates_considered: int = 0
+    candidates_kept: int = 0
+    candidates_dropped_pre_grounding: int = 0
+    candidates_dropped_for_grounding: int = 0
+    grounding_yield_rate: float = 0.0
+    grounding_note: str = ""
 
     independent_verify_calls: int
     independent_verify_breakdown: dict[str, int]

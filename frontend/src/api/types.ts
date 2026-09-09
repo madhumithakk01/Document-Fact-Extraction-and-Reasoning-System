@@ -188,6 +188,7 @@ export interface DocumentEvaluation {
   grounding_checks: number;
   grounding_pass: number;
   grounding_pass_rate: number;
+  candidates_dropped_for_grounding: number;
 }
 
 export interface TimelinePoint {
@@ -204,6 +205,12 @@ export interface Evaluation {
   grounding_checks: number;
   grounding_pass: number;
   grounding_pass_rate: number;
+  candidates_considered: number;
+  candidates_kept: number;
+  candidates_dropped_pre_grounding: number;
+  candidates_dropped_for_grounding: number;
+  grounding_yield_rate: number;
+  grounding_note: string;
   independent_verify_calls: number;
   independent_verify_breakdown: Record<string, number>;
   facts_total: number;

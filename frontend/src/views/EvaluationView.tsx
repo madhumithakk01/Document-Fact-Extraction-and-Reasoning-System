@@ -93,19 +93,49 @@ export function EvaluationView({ projectId }: { projectId: string }) {
 
       <section>
         <h3 className="text-section text-text-primary">Grounding</h3>
+
         <div className="mt-2 flex items-baseline justify-between border-b border-hairline py-2.5">
           <div>
-            <div className="text-cell text-text-primary">Grounding pass rate</div>
+            <div className="text-cell text-text-primary">Pass rate</div>
             <div className="text-meta text-text-muted">
-              {d.grounding_pass} of {d.grounding_checks} evidence spans were a
-              verified literal substring — this sits near 100% because failures
-              are dropped before storage
+              {d.grounding_pass} of {d.grounding_checks} spans that reached the
+              grounding check were a verified literal substring
             </div>
           </div>
           <div className="font-mono text-title tabular-nums text-text-primary">
             {pct(d.grounding_pass_rate)}
           </div>
         </div>
+
+        <div className="flex items-baseline justify-between border-b border-hairline py-2.5">
+          <div>
+            <div className="text-cell text-text-primary">Yield rate</div>
+            <div className="text-meta text-text-muted">
+              {d.grounding_pass} passed of {d.candidates_considered} candidates the
+              extractor proposed — this is the honest end-to-end number
+            </div>
+          </div>
+          <div className="font-mono text-title tabular-nums text-text-primary">
+            {pct(d.grounding_yield_rate)}
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-1.5 text-cell sm:grid-cols-4">
+          <Stat label="Candidates considered" value={String(d.candidates_considered)} />
+          <Stat label="Kept to storage" value={String(d.candidates_kept)} />
+          <Stat
+            label="Dropped pre-grounding"
+            value={String(d.candidates_dropped_pre_grounding)}
+          />
+          <Stat
+            label="Dropped at grounding"
+            value={String(d.candidates_dropped_for_grounding)}
+          />
+        </div>
+
+        {d.grounding_note && (
+          <p className="mt-3 text-meta text-text-muted">{d.grounding_note}</p>
+        )}
       </section>
 
       <section>

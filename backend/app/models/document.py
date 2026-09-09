@@ -51,6 +51,10 @@ class Document(Base, TimestampMixin):
     processing_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     pages_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     pages_processed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # extraction survivorship: how many candidate facts the model proposed vs how
+    # many were kept, so the evaluation view can report an honest yield rate
+    # rather than a rate over only the facts that survived to storage.
+    extraction_stats: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     page_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ocr_page_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

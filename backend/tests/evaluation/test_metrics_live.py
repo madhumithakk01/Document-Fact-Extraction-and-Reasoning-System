@@ -45,6 +45,13 @@ async def test_report_is_derived_from_the_rows(session: AsyncSession) -> None:
     try:
         # --- document A: 4 facts (3 verified, 1 needs_review) ---
         doc_a = make_document(pid, "doc-a.pdf")
+        # the extractor proposed 6 candidates for this doc; 2 were dropped before
+        # grounding (invalid schema), 4 were kept
+        doc_a.extraction_stats = {
+            "candidates_returned": 6,
+            "candidates_kept": 4,
+            "dropped_invalid": 2,
+        }
         session.add(doc_a)
         await session.flush()
         a_facts = [
@@ -74,6 +81,7 @@ async def test_report_is_derived_from_the_rows(session: AsyncSession) -> None:
 
         # --- document B: 2 facts (1 auto_corrected, 1 rejected) + a grounding fail ---
         doc_b = make_document(pid, "doc-b.pdf")
+        doc_b.extraction_stats = {"candidates_returned": 2, "candidates_kept": 2}
         session.add(doc_b)
         await session.flush()
         b_ok = make_fact(
@@ -109,6 +117,16 @@ async def test_report_is_derived_from_the_rows(session: AsyncSession) -> None:
         assert report.grounding_pass == 5
         assert abs(report.grounding_pass_rate - 5 / 6) < 1e-9
 
+        # honest survivorship: 8 candidates proposed (6 + 2), 2 dropped before
+        # grounding, 1 dropped at grounding; yield is over all 8, not just the 6
+        # that reached the check
+        assert report.candidates_considered == 8
+        assert report.candidates_kept == 6
+        assert report.candidates_dropped_pre_grounding == 2
+        assert report.candidates_dropped_for_grounding == 1
+        assert abs(report.grounding_yield_rate - 5 / 8) < 1e-9
+        assert report.grounding_note
+
         # independent verify raw verdicts: 3 supported, 1 partial (A) + 1 partial + 1 supported (B)
         assert report.independent_verify_calls == 6
         assert report.independent_verify_breakdown["supported"] == 4
@@ -131,6 +149,8 @@ async def test_report_is_derived_from_the_rows(session: AsyncSession) -> None:
         assert by_name["doc-a.pdf"].grounding_pass_rate == 1.0
         assert by_name["doc-b.pdf"].grounding_checks == 2
         assert abs(by_name["doc-b.pdf"].grounding_pass_rate - 0.5) < 1e-9
+        assert by_name["doc-a.pdf"].candidates_dropped_for_grounding == 0
+        assert by_name["doc-b.pdf"].candidates_dropped_for_grounding == 1
 
         # timeline: cumulative, one point per document in processing order
         assert [t.index for t in report.timeline] == [1, 2]

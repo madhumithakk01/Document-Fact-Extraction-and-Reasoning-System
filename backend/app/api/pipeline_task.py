@@ -235,6 +235,23 @@ async def _run_pipeline(
     await _profile_and_compare(document_id, project_id, ingestion, llm, embedder)
 
 
+def _merge_extraction_stats(existing: dict | None, stats: object) -> dict:
+    """Accumulate the extraction-stage survivorship counters across the page
+    phases of one document, so the evaluation view can compare candidates the
+    model proposed against candidates that survived to storage."""
+    merged = dict(existing or {})
+    for key, attr in (
+        ("candidates_returned", "facts_returned"),
+        ("candidates_kept", "facts_kept"),
+        ("dropped_invalid", "dropped_invalid"),
+        ("dropped_no_column_context", "dropped_no_column_context"),
+        ("unanchored", "unanchored"),
+        ("chunks_failed", "chunks_failed"),
+    ):
+        merged[key] = merged.get(key, 0) + int(getattr(stats, attr, 0) or 0)
+    return merged
+
+
 async def _extract_and_verify(
     document_id: uuid.UUID,
     project_id: uuid.UUID,
@@ -262,6 +279,9 @@ async def _extract_and_verify(
     async with SessionFactory() as session:
         fact_rows = await persist_facts(session, project_id, document_id, extraction)
         fact_ids = [r.fact_id for r in fact_rows]
+        doc = await session.get(Document, document_id)
+        if doc is not None:
+            doc.extraction_stats = _merge_extraction_stats(doc.extraction_stats, extraction.stats)
         await session.commit()
 
     if surface_verifying:
