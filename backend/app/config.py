@@ -19,6 +19,12 @@ class ProviderName(StrEnum):
     frontier = "frontier"
 
 
+class DualExtractMode(StrEnum):
+    off = "off"
+    demo_only = "demo_only"  # only the lowest-confidence facts, plus any matched by name
+    all = "all"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -55,6 +61,20 @@ class Settings(BaseSettings):
     llm_max_concurrency: int = 1
     llm_min_request_interval: float = 2.0
 
+    # independent dual-extraction corroboration: re-run the extraction prompt on a
+    # second provider and reconcile through the deterministic precheck instead of
+    # relying on one model checking itself.
+    dual_extract_mode: DualExtractMode = DualExtractMode.demo_only
+    dual_extract_provider: ProviderName = ProviderName.ollama
+    # a small local model re-extracting a page is slower than the hosted primary
+    dual_extract_timeout_seconds: float = 240.0
+    # in demo_only mode, corroborate at most this many facts per document (the
+    # lowest-confidence ones first)
+    dual_extract_limit: int = 5
+    # case-insensitive substrings; any fact whose entity or attribute matches is
+    # always corroborated, regardless of mode's limit
+    dual_extract_match: list[str] = []
+
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_device: str = "cpu"
 
@@ -68,6 +88,21 @@ class Settings(BaseSettings):
         # invalid enum value
         if isinstance(v, str) and not v.strip():
             return None
+        return v
+
+    @field_validator("dual_extract_mode", mode="before")
+    @classmethod
+    def _blank_mode_is_default(cls, v: object) -> object:
+        if isinstance(v, str) and not v.strip():
+            return DualExtractMode.demo_only
+        return v
+
+    @field_validator("dual_extract_match", mode="before")
+    @classmethod
+    def _split_match_list(cls, v: object) -> object:
+        # accept a comma-separated env string; "" means no matches
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
         return v
 
 
