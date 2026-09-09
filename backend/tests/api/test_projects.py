@@ -38,12 +38,14 @@ def test_missing_project_is_404(client) -> None:
 
 def test_delete_project_removes_it(client) -> None:
     pid = _new_project(client, "api-test-delete")
-
-    assert client.delete(f"/projects/{pid}").status_code == 204
-    assert client.get(f"/projects/{pid}").status_code == 404
-    assert not any(p["project_id"] == pid for p in client.get("/projects").json())
-    # deleting again is a 404, not a 500
-    assert client.delete(f"/projects/{pid}").status_code == 404
+    try:
+        assert client.delete(f"/projects/{pid}").status_code == 204
+        assert client.get(f"/projects/{pid}").status_code == 404
+        assert not any(p["project_id"] == pid for p in client.get("/projects").json())
+        # deleting again is a 404, not a 500
+        assert client.delete(f"/projects/{pid}").status_code == 404
+    finally:
+        client.delete(f"/projects/{pid}")  # no-op if the test already removed it
 
 
 def test_reject_blank_project_name(client) -> None:
