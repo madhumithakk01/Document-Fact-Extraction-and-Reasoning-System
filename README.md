@@ -159,3 +159,9 @@ AI tool used : Claude Code
 
 ## Additional Notes
 
+**An extension beyond the suggested four.** Alongside the four brownie-point directions the brief lists, the reasoning console is a self-directed extension in the same spirit: a separate agent answers open-ended questions against the verified fact base — not just individual facts or pairwise relationships — citing its sources and surfacing any disagreements it encounters along the way. It's a genuine use of the knowledge layer rather than an additional way of building it.
+
+
+
+
+
