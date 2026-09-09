@@ -18,6 +18,52 @@ def _rate(numerator: int, denominator: int) -> float:
     return numerator / denominator if denominator else 0.0
 
 
+GROUNDING_NOTE = (
+    "'Pass rate' is measured over candidates that reached the grounding check. "
+    "'Yield rate' is measured over every candidate the extractor proposed, "
+    "including those dropped earlier for an invalid schema or missing "
+    "table-column context. A candidate that fails grounding is kept as a "
+    "'rejected' fact for audit but excluded from comparison, query, and the "
+    "ontology."
+)
+
+
+def grounding_survivorship(
+    *,
+    per_document: list[tuple[dict, int]],
+    grounding_checks: int,
+    grounding_pass: int,
+) -> dict:
+    """Turn per-document ``(extraction_stats, grounding_checks)`` pairs plus the
+    project grounding-check totals into the honest before/after counts.
+
+    A document processed before extraction stats were recorded contributes its
+    own grounding-check count as the fallback denominator, so it is never
+    silently dropped from ``candidates_considered``.
+    """
+    considered = 0
+    kept = 0
+    pre_grounding_dropped = 0
+    for stats, doc_checks in per_document:
+        returned = int(stats.get("candidates_returned", 0))
+        doc_kept = int(stats.get("candidates_kept", 0))
+        dropped = int(stats.get("dropped_invalid", 0)) + int(
+            stats.get("dropped_no_column_context", 0)
+        )
+        considered += returned if returned else doc_checks + dropped
+        kept += doc_kept if doc_kept else doc_checks
+        pre_grounding_dropped += dropped
+
+    grounding_fail = max(0, grounding_checks - grounding_pass)
+    return {
+        "candidates_considered": considered,
+        "candidates_kept": kept,
+        "candidates_dropped_pre_grounding": pre_grounding_dropped,
+        "candidates_dropped_for_grounding": grounding_fail,
+        "grounding_yield_rate": _rate(grounding_pass, considered),
+    }
+
+
 async def compute_evaluation(session: AsyncSession, project_id: uuid.UUID) -> EvaluationReport:
     # --- facts: id -> (document_id, status) ---
     fact_rows = (
@@ -93,6 +139,7 @@ async def compute_evaluation(session: AsyncSession, project_id: uuid.UUID) -> Ev
                 grounding_checks=d_ground_total,
                 grounding_pass=d_ground_pass,
                 grounding_pass_rate=_rate(d_ground_pass, d_ground_total),
+                candidates_dropped_for_grounding=d_grounding.get("fail", 0),
             )
         )
 
@@ -112,10 +159,25 @@ async def compute_evaluation(session: AsyncSession, project_id: uuid.UUID) -> Ev
             )
         )
 
+    survivorship = grounding_survivorship(
+        per_document=[
+            (doc.extraction_stats or {}, sum(grounding_by_document[doc.document_id].values()))
+            for doc in documents
+        ],
+        grounding_checks=grounding_checks,
+        grounding_pass=grounding_pass,
+    )
+
     return EvaluationReport(
         grounding_checks=grounding_checks,
         grounding_pass=grounding_pass,
         grounding_pass_rate=_rate(grounding_pass, grounding_checks),
+        candidates_considered=survivorship["candidates_considered"],
+        candidates_kept=survivorship["candidates_kept"],
+        candidates_dropped_pre_grounding=survivorship["candidates_dropped_pre_grounding"],
+        candidates_dropped_for_grounding=survivorship["candidates_dropped_for_grounding"],
+        grounding_yield_rate=survivorship["grounding_yield_rate"],
+        grounding_note=GROUNDING_NOTE,
         independent_verify_calls=sum(verify_overall.values()),
         independent_verify_breakdown=dict(verify_overall),
         facts_total=facts_total,
