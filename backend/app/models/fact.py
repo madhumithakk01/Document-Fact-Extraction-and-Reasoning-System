@@ -73,3 +73,7 @@ class Fact(Base, TimestampMixin):
     # Structured before/after record for every field the verifier auto-corrects.
     # Each entry: {fact_id, corrected_by, at, changes: {field: {old, new}}}.
     corrections: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+    # result of independent dual-extraction corroboration, when it ran:
+    # {status, confidence, corroborating_provider, needs_human_review, ...}
+    corroboration: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -50,6 +50,8 @@ async def persist_verification(
         row.verifier_confidence = fv.verifier_confidence
         if fv.notes:
             row.notes = [*(row.notes or []), *fv.notes]
+        if fv.corroboration is not None:
+            row.corroboration = fv.corroboration
 
         if fv.corrected and fv.corrected_fact is not None:
             c = fv.corrected_fact
