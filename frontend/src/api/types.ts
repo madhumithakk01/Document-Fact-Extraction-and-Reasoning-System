@@ -106,6 +106,7 @@ export interface Fact {
   provider_used: string | null;
   notes: unknown[];
   corrections: FactCorrection[];
+  corroboration: FactCorroboration | null;
   source_anchor: Record<string, unknown>;
   created_at: string;
 }
@@ -115,6 +116,15 @@ export interface FactCorrection {
   corrected_by: string;
   at: string;
   changes: Record<string, { old: unknown; new: unknown }>;
+}
+
+export interface FactCorroboration {
+  status: "independently_corroborated" | "single_source_unconfirmed";
+  confidence: number;
+  corroborating_provider: string | null;
+  needs_human_review: boolean;
+  blind_provider: string | null;
+  blind_fact_count: number;
 }
 
 export interface BBox {
