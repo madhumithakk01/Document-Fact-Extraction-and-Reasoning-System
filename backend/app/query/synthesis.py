@@ -14,7 +14,7 @@ from app.models.fact import Fact
 from app.models.relationship import FactRelationship
 from app.providers.base import CompletionRequest, LLMProvider, ProviderError
 from app.query.schema import Citation, Disagreement
-from app.query.tools import summarize_fact
+from app.query.tools import format_quantitative_value, summarize_fact
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +181,7 @@ async def synthesize(
 def _value_summary(f: Fact) -> str:
     v = f.value or {}
     if f.fact_kind == "quantitative":
-        return f"{v.get('comparator', 'eq')} {v.get('number', '?')} {v.get('unit') or ''}".strip()
+        return format_quantitative_value(v)
     return v.get("state") or v.get("text") or "?"
 
 

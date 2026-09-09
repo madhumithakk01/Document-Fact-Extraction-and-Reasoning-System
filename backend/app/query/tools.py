@@ -20,10 +20,28 @@ TOOL_NAMES = ("search_facts", "get_relationships")
 _USABLE = ("verified", "auto_corrected", "needs_review")
 
 
+def format_quantitative_value(v: dict) -> str:
+    """Render a quantitative value for display and for agent context.
+
+    Found during review: the old ``v.get("comparator", "eq")`` default rendered
+    inferred exact-equality for facts whose extractor never asserted a
+    comparator. A missing/None comparator is now shown with a leading "~"
+    (approximate); an explicit "eq" renders clean with no prefix.
+    """
+    comparator = v.get("comparator") or "unspecified"
+    if comparator == "eq":
+        prefix = ""
+    elif comparator == "unspecified":
+        prefix = "~"
+    else:
+        prefix = f"{comparator} "
+    return f"{prefix}{v.get('number', '?')} {v.get('unit') or ''}".strip()
+
+
 def summarize_fact(fact: Fact, doc_name: str | None = None) -> str:
     v = fact.value or {}
     if fact.fact_kind == "quantitative":
-        val = f"{v.get('comparator', 'eq')} {v.get('number', '?')} {v.get('unit') or ''}".strip()
+        val = format_quantitative_value(v)
     else:
         val = v.get("state") or v.get("text") or "?"
     period = (fact.period or {}).get("raw_label") or "-"

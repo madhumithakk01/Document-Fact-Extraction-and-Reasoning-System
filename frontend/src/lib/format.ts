@@ -14,9 +14,12 @@ export function formatValue(v: FactValue, kind: Fact["fact_kind"]): string {
   if (kind === "status") return v.state ?? "—";
   if (kind === "qualitative") return v.text ?? "—";
   if (v.number == null && v.number_high == null) return "—";
-  const sign = COMPARATOR_SIGN[v.comparator ?? "eq"] ?? "";
+  // An unspecified comparator renders as approximate ("~"), never as an inferred
+  // exact value the extractor did not assert. Found during review.
+  const comparator = v.comparator ?? "unspecified";
+  const sign = comparator === "unspecified" ? "~ " : COMPARATOR_SIGN[comparator] ?? "";
   const num =
-    v.comparator === "range" && v.number_high != null
+    comparator === "range" && v.number_high != null
       ? `${fmtNum(v.number)}–${fmtNum(v.number_high)}`
       : fmtNum(v.number ?? v.number_high);
   return `${sign}${num}${v.unit ? ` ${v.unit}` : ""}`.trim();
