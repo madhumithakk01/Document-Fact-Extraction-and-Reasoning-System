@@ -13,6 +13,7 @@ from app.providers.base import (
     CompletionResult,
     LLMProvider,
     ProviderError,
+    ProviderTimeoutError,
 )
 
 
@@ -60,6 +61,8 @@ class OllamaProvider(LLMProvider):
     async def complete(self, request: CompletionRequest) -> CompletionResult:
         try:
             response = await self._client.post("/api/chat", json=self._payload(request))
+        except httpx.TimeoutException as exc:
+            raise ProviderTimeoutError(f"ollama timed out: {exc}") from exc
         except httpx.HTTPError as exc:
             raise ProviderError(f"ollama transport error: {exc}") from exc
         if response.status_code >= 400:
