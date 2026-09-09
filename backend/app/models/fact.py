@@ -66,3 +66,7 @@ class Fact(Base, TimestampMixin):
     verifier_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+    # Structured before/after record for every field the verifier auto-corrects.
+    # Each entry: {fact_id, corrected_by, at, changes: {field: {old, new}}}.
+    corrections: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
