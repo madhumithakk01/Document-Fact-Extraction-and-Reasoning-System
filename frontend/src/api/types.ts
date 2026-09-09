@@ -103,8 +103,16 @@ export interface Fact {
   extraction_confidence: number;
   verifier_confidence: number | null;
   notes: unknown[];
+  corrections: FactCorrection[];
   source_anchor: Record<string, unknown>;
   created_at: string;
+}
+
+export interface FactCorrection {
+  fact_id: string;
+  corrected_by: string;
+  at: string;
+  changes: Record<string, { old: unknown; new: unknown }>;
 }
 
 export interface BBox {

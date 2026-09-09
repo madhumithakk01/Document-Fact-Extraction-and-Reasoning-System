@@ -101,6 +101,7 @@ export function FactsView({ projectId }: { projectId: string }) {
               {rows.map((f) => {
                 const st = STATUS_META[f.verification_status];
                 const assumed = factAssumptions(f.qualifiers);
+                const correctedFields = f.corrections.flatMap((c) => Object.keys(c.changes));
                 return (
                   <tr
                     key={f.fact_id}
@@ -135,6 +136,12 @@ export function FactsView({ projectId }: { projectId: string }) {
                     <td className="py-1.5 pr-3">
                       <span className="flex flex-wrap items-center gap-1">
                         <Badge label={st.label} className={st.className} />
+                        {correctedFields.length > 0 && (
+                          <Badge
+                            label={`↻ corrected: ${correctedFields.join(", ")}`}
+                            className="text-reconciled border-reconciled/40"
+                          />
+                        )}
                         {assumed.map((flag) => (
                           <Badge
                             key={flag}
