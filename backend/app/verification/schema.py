@@ -13,6 +13,7 @@ from app.extraction.schema import AnchoredFact, CandidateFact
 class VerificationStage(StrEnum):
     grounding_check = "grounding_check"
     independent_verify = "independent_verify"
+    dual_extraction = "dual_extraction"
 
 
 class IndependentVerdict(StrEnum):
@@ -67,6 +68,9 @@ class FactVerification(BaseModel):
     corrected_fact: CandidateFact | None = None
     log: list[VerificationLogEntry] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    # set when independent dual-extraction corroboration ran for this fact:
+    # {status, confidence, corroborating_provider, needs_human_review, ...}
+    corroboration: dict[str, Any] | None = None
 
     @property
     def effective_fact(self) -> CandidateFact:

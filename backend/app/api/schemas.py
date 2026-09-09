@@ -130,6 +130,7 @@ class FactOut(BaseModel):
     provider_used: str | None
     notes: list[Any]
     corrections: list[Any]
+    corroboration: dict[str, Any] | None
     source_anchor: dict[str, Any]
     created_at: datetime
 
@@ -155,6 +156,7 @@ class FactOut(BaseModel):
             provider_used=f.provider_used,
             notes=f.notes,
             corrections=f.corrections,
+            corroboration=f.corroboration,
             source_anchor=f.source_anchor,
             created_at=f.created_at,
         )

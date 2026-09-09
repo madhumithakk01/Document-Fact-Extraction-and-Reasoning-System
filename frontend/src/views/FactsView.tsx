@@ -136,6 +136,22 @@ export function FactsView({ projectId }: { projectId: string }) {
                     <td className="py-1.5 pr-3">
                       <span className="flex flex-wrap items-center gap-1">
                         <Badge label={st.label} className={st.className} />
+                        {f.corroboration?.status === "independently_corroborated" && (
+                          <Badge
+                            label={`✓✓ 2-source${
+                              f.corroboration.corroborating_provider
+                                ? ` · ${f.corroboration.corroborating_provider}`
+                                : ""
+                            }`}
+                            className="text-corroborates border-corroborates/40"
+                          />
+                        )}
+                        {f.corroboration?.status === "single_source_unconfirmed" && (
+                          <Badge
+                            label="⚠ single source — unconfirmed"
+                            className="text-contradicts border-contradicts/40"
+                          />
+                        )}
                         {correctedFields.length > 0 && (
                           <Badge
                             label={`↻ corrected: ${correctedFields.join(", ")}`}

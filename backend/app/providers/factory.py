@@ -17,11 +17,19 @@ from app.providers.ollama import OllamaProvider
 from app.providers.openai_compatible import OpenAICompatibleProvider
 
 
-def _build_single(settings: Settings, which: ProviderName) -> LLMProvider:
+def build_single_provider(
+    settings: Settings,
+    which: ProviderName,
+    *,
+    timeout_seconds: float | None = None,
+) -> LLMProvider:
+    """Build one concrete provider by name, with no fallback wrapper. Used by the
+    dual-extraction path, which needs a specific second provider (and often a
+    longer timeout, since a small local model is slower)."""
     common = {
         "default_temperature": settings.llm_temperature,
         "default_max_tokens": settings.llm_max_tokens,
-        "timeout_seconds": settings.llm_timeout_seconds,
+        "timeout_seconds": timeout_seconds or settings.llm_timeout_seconds,
     }
     openai_common = {
         **common,
@@ -54,11 +62,11 @@ def _build_single(settings: Settings, which: ProviderName) -> LLMProvider:
 
 
 def build_llm_provider(settings: Settings) -> LLMProvider:
-    primary = _build_single(settings, settings.llm_provider)
+    primary = build_single_provider(settings, settings.llm_provider)
     fallback = settings.llm_fallback_provider
     if fallback is None or fallback is settings.llm_provider:
         return primary
-    return FallbackLLMProvider(primary, _build_single(settings, fallback))
+    return FallbackLLMProvider(primary, build_single_provider(settings, fallback))
 
 
 @lru_cache
