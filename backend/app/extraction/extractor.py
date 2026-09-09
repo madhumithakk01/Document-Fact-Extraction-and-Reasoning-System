@@ -37,7 +37,12 @@ from app.extraction.schema import (
 )
 from app.ingestion.types import Chunk, IngestionResult
 from app.providers import get_llm_provider
-from app.providers.base import CompletionRequest, LLMProvider, ProviderError
+from app.providers.base import (
+    AllProvidersUnavailable,
+    CompletionRequest,
+    LLMProvider,
+    ProviderError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +191,12 @@ def _parse_facts(payload: object) -> list[dict]:
 
 
 def _finalize_candidate(
-    raw: dict, chunk: Chunk, *, document_id: str | None, stats: ExtractionStats
+    raw: dict,
+    chunk: Chunk,
+    *,
+    document_id: str | None,
+    stats: ExtractionStats,
+    provider_used: str | None = None,
 ) -> AnchoredFact | None:
     """Validate one raw fact against ``chunk`` and anchor its evidence, updating
     ``stats``. Returns None when the fact is dropped."""
@@ -220,7 +230,13 @@ def _finalize_candidate(
 
     stats.facts_kept += 1
     stats.by_kind[fact.fact_kind.value] = stats.by_kind.get(fact.fact_kind.value, 0) + 1
-    return AnchoredFact(candidate=fact, anchor=anchor, document_id=document_id, notes=notes)
+    return AnchoredFact(
+        candidate=fact,
+        anchor=anchor,
+        document_id=document_id,
+        notes=notes,
+        provider_used=provider_used,
+    )
 
 
 def _resolve_batch_chunk(raw: dict, chunks: Sequence[Chunk], by_page: dict[int, Chunk]) -> Chunk:
@@ -295,6 +311,8 @@ async def extract_from_chunk(
         )
         stats.llm_calls = 1
         raw_facts = _parse_facts(result.json())
+    except AllProvidersUnavailable:
+        raise  # every provider failed -> surfaced as extraction_unavailable, not a swallowed miss
     except ProviderError as exc:
         if _is_schema_rejection(exc):
             # Provider will not accept this structured-output schema; fall back to
@@ -312,6 +330,8 @@ async def extract_from_chunk(
                 )
                 stats.llm_calls = 1
                 raw_facts = _parse_facts(result.json())
+            except AllProvidersUnavailable:
+                raise
             except ProviderError as exc2:
                 logger.warning("extraction failed on chunk %d: %s", chunk.index, exc2)
                 stats.chunks_failed = 1
@@ -324,7 +344,9 @@ async def extract_from_chunk(
     stats.facts_returned = len(raw_facts)
     anchored: list[AnchoredFact] = []
     for raw in raw_facts:
-        af = _finalize_candidate(raw, chunk, document_id=document_id, stats=stats)
+        af = _finalize_candidate(
+            raw, chunk, document_id=document_id, stats=stats, provider_used=result.provider
+        )
         if af is not None:
             anchored.append(af)
     return anchored, stats
@@ -357,6 +379,8 @@ async def extract_from_batch(
         )
         stats.llm_calls = 1
         raw_facts = _parse_facts(result.json())
+    except AllProvidersUnavailable:
+        raise  # every provider failed -> surfaced as extraction_unavailable, not a swallowed miss
     except ProviderError as exc:
         if _is_schema_rejection(exc):
             logger.warning("provider rejected the batch schema, retrying unconstrained: %s", exc)
@@ -370,6 +394,8 @@ async def extract_from_batch(
                 )
                 stats.llm_calls = 1
                 raw_facts = _parse_facts(result.json())
+            except AllProvidersUnavailable:
+                raise
             except ProviderError as exc2:
                 logger.warning("batch extraction failed on pages %s: %s", pages, exc2)
                 stats.chunks_failed = len(chunks)
@@ -384,7 +410,9 @@ async def extract_from_batch(
     anchored: list[AnchoredFact] = []
     for raw in raw_facts:
         chunk = _resolve_batch_chunk(raw, chunks, by_page)
-        af = _finalize_candidate(raw, chunk, document_id=document_id, stats=stats)
+        af = _finalize_candidate(
+            raw, chunk, document_id=document_id, stats=stats, provider_used=result.provider
+        )
         if af is not None:
             anchored.append(af)
     return anchored, stats

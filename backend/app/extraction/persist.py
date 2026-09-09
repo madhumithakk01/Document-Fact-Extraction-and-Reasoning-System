@@ -71,6 +71,7 @@ async def persist_facts(
             evidence_text=c.evidence_text,
             verification_status=af.verification_status.value,
             extraction_confidence=penalize_confidence(c.extraction_confidence, assumed),
+            provider_used=af.provider_used,
             notes=af.notes,
         )
         session.add(row)
