@@ -128,6 +128,7 @@ class FactOut(BaseModel):
     extraction_confidence: float
     verifier_confidence: float | None
     notes: list[Any]
+    corrections: list[Any]
     source_anchor: dict[str, Any]
     created_at: datetime
 
@@ -151,6 +152,7 @@ class FactOut(BaseModel):
             extraction_confidence=f.extraction_confidence,
             verifier_confidence=f.verifier_confidence,
             notes=f.notes,
+            corrections=f.corrections,
             source_anchor=f.source_anchor,
             created_at=f.created_at,
         )
