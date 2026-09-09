@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extraction.schema import ExtractionResult
 from app.models.document import Chunk
 from app.models.fact import Fact
+from app.normalization.assumptions import detect_assumptions, penalize_confidence
 
 
 async def persist_facts(
@@ -42,6 +43,17 @@ async def persist_facts(
     for af in result.facts:
         c = af.candidate
         anchor = af.anchor
+        value = c.value.model_dump(exclude_none=True)
+        period = c.period.model_dump(exclude_none=True)
+
+        assumed = detect_assumptions(
+            fact_kind=c.fact_kind.value,
+            entity_resolved=c.entity_resolved,
+            value=value,
+            period_label=period.get("raw_label"),
+        )
+        qualifiers = {**c.qualifiers, "assumed": assumed} if assumed else c.qualifiers
+
         row = Fact(
             fact_id=uuid.uuid4(),
             project_id=project_id,
@@ -53,12 +65,12 @@ async def persist_facts(
             entity=c.entity,
             entity_resolved=c.entity_resolved,
             attribute=c.attribute,
-            value=c.value.model_dump(exclude_none=True),
-            period=c.period.model_dump(exclude_none=True),
-            qualifiers=c.qualifiers,
+            value=value,
+            period=period,
+            qualifiers=qualifiers,
             evidence_text=c.evidence_text,
             verification_status=af.verification_status.value,
-            extraction_confidence=c.extraction_confidence,
+            extraction_confidence=penalize_confidence(c.extraction_confidence, assumed),
             notes=af.notes,
         )
         session.add(row)

@@ -39,3 +39,16 @@ export const STATUS_META: Record<
   rejected: { label: "Rejected", className: "text-contradicts border-contradicts/40" },
   pending: { label: "Pending", className: "text-text-muted border-hairline" },
 };
+
+// Silent assumptions the pipeline made to fill a gap the source left open. Each
+// one lowers the fact's extraction confidence and is shown next to the fact.
+export const ASSUMPTION_LABELS: Record<string, string> = {
+  fy_convention_assumed: "FY convention assumed",
+  entity_inferred: "Entity inferred",
+  comparator_unspecified: "Comparator not stated",
+};
+
+export function factAssumptions(qualifiers: Record<string, string | string[]>): string[] {
+  const a = qualifiers?.assumed;
+  return Array.isArray(a) ? a : [];
+}
