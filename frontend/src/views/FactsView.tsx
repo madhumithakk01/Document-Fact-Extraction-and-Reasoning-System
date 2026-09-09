@@ -160,7 +160,15 @@ export function FactsView({ projectId }: { projectId: string }) {
                       </span>
                     </td>
                     <td className="py-1.5 pr-4 text-meta text-text-muted">
-                      p{f.page_number ?? "?"}
+                      <span>p{f.page_number ?? "?"}</span>
+                      {f.provider_used && (
+                        <span
+                          className="ml-1.5 font-mono"
+                          title="LLM provider that produced this fact"
+                        >
+                          · {f.provider_used}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );

@@ -49,6 +49,7 @@ class IndependentVerification(BaseModel):
     issues: list[VerifierIssue] = Field(default_factory=list)
     supported_confidence: float = 0.0
     reasoning: str = ""
+    provider: str = ""  # the LLM provider that served this verification call
 
 
 class VerificationLogEntry(BaseModel):

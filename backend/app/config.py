@@ -9,6 +9,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +32,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://factlayer:factlayer@localhost:5432/factlayer"
 
     llm_provider: ProviderName = ProviderName.groq
+    # when set (and different from llm_provider), reasoning calls fail over to
+    # this provider on a rate limit, timeout, auth rejection, or transport error
+    llm_fallback_provider: ProviderName | None = None
 
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
@@ -56,6 +60,15 @@ class Settings(BaseSettings):
 
     upload_dir: str = "./storage/uploads"
     page_image_dir: str = "./storage/page_images"
+
+    @field_validator("llm_fallback_provider", mode="before")
+    @classmethod
+    def _blank_fallback_is_none(cls, v: object) -> object:
+        # an unset env var arrives as "" -- treat it as "no fallback", not an
+        # invalid enum value
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 @lru_cache

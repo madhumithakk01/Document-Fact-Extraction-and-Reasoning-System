@@ -20,8 +20,10 @@ CONCEPT_KINDS = ("entity", "attribute")
 PROCESSING_STATUSES = (
     "queued",
     "extracting",
+    "partially_ready",
     "verifying",
     "comparing",
     "ready",
     "failed",
+    "extraction_unavailable",
 )

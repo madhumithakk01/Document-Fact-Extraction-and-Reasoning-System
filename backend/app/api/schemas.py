@@ -127,6 +127,7 @@ class FactOut(BaseModel):
     verification_status: str
     extraction_confidence: float
     verifier_confidence: float | None
+    provider_used: str | None
     notes: list[Any]
     corrections: list[Any]
     source_anchor: dict[str, Any]
@@ -151,6 +152,7 @@ class FactOut(BaseModel):
             verification_status=f.verification_status,
             extraction_confidence=f.extraction_confidence,
             verifier_confidence=f.verifier_confidence,
+            provider_used=f.provider_used,
             notes=f.notes,
             corrections=f.corrections,
             source_anchor=f.source_anchor,

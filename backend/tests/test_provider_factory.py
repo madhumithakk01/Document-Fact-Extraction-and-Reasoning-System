@@ -5,6 +5,7 @@ import pytest
 from app.config import Settings
 from app.providers.base import ProviderError
 from app.providers.factory import build_llm_provider
+from app.providers.fallback import FallbackLLMProvider
 from app.providers.local_embeddings import LocalEmbeddingProvider
 from app.providers.ollama import OllamaProvider
 from app.providers.openai_compatible import OpenAICompatibleProvider
@@ -46,6 +47,30 @@ def test_swap_is_config_only() -> None:
     assert type(groq) is not type(ollama)
     assert isinstance(groq, OpenAICompatibleProvider)
     assert isinstance(ollama, OllamaProvider)
+
+
+def test_fallback_wraps_primary_and_secondary_when_configured() -> None:
+    provider = build_llm_provider(
+        _settings(
+            llm_provider="groq",
+            groq_api_key="k",
+            llm_fallback_provider="ollama",
+        )
+    )
+    assert isinstance(provider, FallbackLLMProvider)
+    primary, secondary = provider.providers
+    assert isinstance(primary, OpenAICompatibleProvider) and primary.name == "groq"
+    assert isinstance(secondary, OllamaProvider)
+
+
+def test_no_fallback_when_unset_or_same_as_primary() -> None:
+    plain = build_llm_provider(_settings(llm_provider="groq", groq_api_key="k"))
+    assert isinstance(plain, OpenAICompatibleProvider)
+
+    same = build_llm_provider(
+        _settings(llm_provider="groq", groq_api_key="k", llm_fallback_provider="groq")
+    )
+    assert isinstance(same, OpenAICompatibleProvider)
 
 
 def test_local_embedding_provider_reports_known_dimension() -> None:

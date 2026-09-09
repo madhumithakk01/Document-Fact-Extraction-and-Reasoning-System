@@ -11,12 +11,13 @@ from functools import lru_cache
 
 from app.config import ProviderName, Settings, get_settings
 from app.providers.base import EmbeddingProvider, LLMProvider, ProviderError
+from app.providers.fallback import FallbackLLMProvider
 from app.providers.local_embeddings import LocalEmbeddingProvider
 from app.providers.ollama import OllamaProvider
 from app.providers.openai_compatible import OpenAICompatibleProvider
 
 
-def build_llm_provider(settings: Settings) -> LLMProvider:
+def _build_single(settings: Settings, which: ProviderName) -> LLMProvider:
     common = {
         "default_temperature": settings.llm_temperature,
         "default_max_tokens": settings.llm_max_tokens,
@@ -27,7 +28,7 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
         "max_concurrency": settings.llm_max_concurrency,
         "min_request_interval": settings.llm_min_request_interval,
     }
-    if settings.llm_provider is ProviderName.groq:
+    if which is ProviderName.groq:
         return OpenAICompatibleProvider(
             name="groq",
             base_url=settings.groq_base_url,
@@ -35,7 +36,7 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
             model=settings.groq_model,
             **openai_common,
         )
-    if settings.llm_provider is ProviderName.frontier:
+    if which is ProviderName.frontier:
         return OpenAICompatibleProvider(
             name="frontier",
             base_url=settings.frontier_base_url,
@@ -43,13 +44,21 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
             model=settings.frontier_model,
             **openai_common,
         )
-    if settings.llm_provider is ProviderName.ollama:
+    if which is ProviderName.ollama:
         return OllamaProvider(
             base_url=settings.ollama_base_url,
             model=settings.ollama_model,
             **common,
         )
-    raise ProviderError(f"unknown LLM provider: {settings.llm_provider!r}")
+    raise ProviderError(f"unknown LLM provider: {which!r}")
+
+
+def build_llm_provider(settings: Settings) -> LLMProvider:
+    primary = _build_single(settings, settings.llm_provider)
+    fallback = settings.llm_fallback_provider
+    if fallback is None or fallback is settings.llm_provider:
+        return primary
+    return FallbackLLMProvider(primary, _build_single(settings, fallback))
 
 
 @lru_cache

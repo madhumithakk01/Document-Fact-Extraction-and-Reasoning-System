@@ -141,6 +141,8 @@ class AnchoredFact(BaseModel):
     document_id: str | None = None
     verification_status: VerificationStatus = VerificationStatus.pending
     notes: list[str] = Field(default_factory=list)
+    # the LLM provider that produced this fact, from CompletionResult.provider
+    provider_used: str | None = None
 
     @property
     def anchored(self) -> bool:

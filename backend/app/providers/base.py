@@ -18,6 +18,24 @@ class ProviderError(RuntimeError):
     (transport error, auth failure, malformed response)."""
 
 
+class RateLimitError(ProviderError):
+    """The provider is rate limited or out of quota, and its own retry budget is
+    spent. A different provider may still succeed."""
+
+
+class ProviderTimeoutError(ProviderError):
+    """The provider did not respond within the configured timeout."""
+
+
+class ProviderAuthError(ProviderError):
+    """The provider rejected the credentials (401/403). Surfaced as a distinct
+    type so a fallback path can try the next provider instead of failing hard."""
+
+
+class AllProvidersUnavailable(ProviderError):
+    """Every provider in a fallback chain failed to serve a call."""
+
+
 @dataclass(slots=True)
 class CompletionRequest:
     """A single reasoning call.

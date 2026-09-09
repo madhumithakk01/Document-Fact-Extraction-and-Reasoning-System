@@ -22,6 +22,7 @@ async def test_returns_anchored_fact(make_chunk) -> None:
     assert af.candidate.entity == "Acme Corporation"
     assert af.anchored and af.anchor.exact
     assert af.anchor.char_start == 2000 + text.index("consolidated revenue")
+    assert af.provider_used == "fake"  # carried from CompletionResult.provider
     assert stats.facts_kept == 1
     assert stats.by_kind == {"quantitative": 1}
 

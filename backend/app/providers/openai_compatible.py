@@ -17,7 +17,10 @@ from app.providers.base import (
     CompletionRequest,
     CompletionResult,
     LLMProvider,
+    ProviderAuthError,
     ProviderError,
+    ProviderTimeoutError,
+    RateLimitError,
 )
 from app.providers.observability import RetryNotice, notify_retry
 
@@ -120,6 +123,11 @@ class OpenAICompatibleProvider(LLMProvider):
         for attempt in range(self._max_retries + 1):
             try:
                 response = await self._client.post("/chat/completions", json=payload)
+            except httpx.TimeoutException as exc:
+                if attempt < self._max_retries:
+                    await asyncio.sleep(min(2.0**attempt, _MAX_BACKOFF_SECONDS))
+                    continue
+                raise ProviderTimeoutError(f"{self.name} timed out: {exc}") from exc
             except httpx.HTTPError as exc:
                 if attempt < self._max_retries:
                     await asyncio.sleep(min(2.0**attempt, _MAX_BACKOFF_SECONDS))
@@ -150,6 +158,16 @@ class OpenAICompatibleProvider(LLMProvider):
                 continue
             break
 
+        if response.status_code == 429:
+            raise RateLimitError(
+                f"{self.name} rate limited after {self._max_retries} retries: "
+                f"{response.text[:300]}"
+            )
+        if response.status_code in (401, 403):
+            raise ProviderAuthError(
+                f"{self.name} rejected credentials ({response.status_code}): "
+                f"{response.text[:300]}"
+            )
         if response.status_code >= 400:
             raise ProviderError(
                 f"{self.name} returned {response.status_code}: {response.text[:300]}"
